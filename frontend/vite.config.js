@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    host: '0.0.0.0',
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
@@ -12,6 +13,15 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
+  },
+  preview: {
+    port: 8080,
+    host: '0.0.0.0',
+    allowedHosts: [
+      'lively-emotion-production.up.railway.app',
+      '.railway.app',
+      'localhost'
+    ]
   }
 })
 
