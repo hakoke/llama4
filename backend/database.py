@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Float, JSON, Boolean, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Float, JSON, Boolean, ForeignKey, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -214,9 +214,13 @@ class Session(Base):
 def init_db():
     """Initialize database and create tables"""
     # Enable pgvector extension
-    with engine.connect() as conn:
-        conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        conn.commit()
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            conn.commit()
+    except Exception as e:
+        print(f"pgvector extension note: {e}")
+        # Continue anyway - extension might already exist or not be needed
     
     Base.metadata.create_all(bind=engine)
 
