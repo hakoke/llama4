@@ -66,7 +66,7 @@ function Lobby({ gameId, playerId, username, players, gameMode, onStartGame, onB
             </AnimatePresence>
           </ul>
           {!canStart && (
-            <p className="lobby-hint">Need {Math.max(0, 2 - players.length)} more players to ignite.</p>
+            <p className="lobby-hint">Need {Math.max(0, 2 - players.length)} more {Math.max(0, 2 - players.length) === 1 ? 'player' : 'players'} to ignite.</p>
           )}
         </div>
 
