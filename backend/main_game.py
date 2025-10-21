@@ -7,7 +7,7 @@ import uuid
 import asyncio
 import json
 
-from database import init_db, get_db, Player
+from database import init_db, get_db, Player, PlayerVote
 from game_service import GameService
 from websocket_handler import manager
 from ai_impersonator import ai_impersonator
