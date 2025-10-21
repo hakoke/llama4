@@ -293,15 +293,14 @@ async def websocket_endpoint(
                     content=content
                 )
                 
-                # Broadcast to appropriate recipients
-                if game.mode == "group" and game.status == "playing":
-                    # Broadcast to everyone in group
-                    await manager.broadcast_to_game({
-                        "type": "chat_message",
-                        "sender_id": player_id,
-                        "content": content,
-                        "timestamp": message_data.get("timestamp")
-                    }, game_id)
+                # Broadcast message to everyone in the game
+                await manager.broadcast_to_game({
+                    "type": "chat_message",
+                    "sender_id": player_id,
+                    "username": player.username,
+                    "content": content,
+                    "timestamp": message_data.get("timestamp")
+                }, game_id)
                     
                     # AI might respond if in group chat
                     if game.settings.get("ai_target_id"):
@@ -357,12 +356,12 @@ async def ai_respond_learning(game_id: str, player_id: str, user_message: str, d
         is_ai=True
     )
     
-    # Send to player
-    await manager.send_personal_message({
+    # Broadcast AI response to everyone in the game
+    await manager.broadcast_to_game({
         "type": "chat_message",
         "sender_id": "ai",
         "content": ai_response
-    }, player_id)
+    }, game_session.game_id)
 
 async def ai_respond_in_game(game_id: str, replying_to_player: str, message: str, db: Session):
     """AI responds during game phase (while impersonating)"""
