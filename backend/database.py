@@ -159,7 +159,7 @@ class UniversalKnowledge(Base):
     
     confidence = Column(Float, default=0.5)
     last_updated = Column(DateTime, default=datetime.utcnow)
-    metadata = Column(JSON, nullable=True)
+    meta_info = Column(JSON, nullable=True)
 
 class AIReasoning(Base):
     __tablename__ = "ai_reasoning"
@@ -199,7 +199,7 @@ class Memory(Base):
     content = Column(Text)
     confidence = Column(Float, default=1.0)
     timestamp = Column(DateTime, default=datetime.utcnow)
-    metadata = Column(JSON, nullable=True)
+    meta_info = Column(JSON, nullable=True)
     embedding = Column(Vector(1536), nullable=True)
 
 class Session(Base):
@@ -209,7 +209,7 @@ class Session(Base):
     user_name = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_active = Column(DateTime, default=datetime.utcnow)
-    metadata = Column(JSON, nullable=True)
+    meta_info = Column(JSON, nullable=True)
 
 def init_db():
     """Initialize database and create tables"""
