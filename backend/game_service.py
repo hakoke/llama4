@@ -198,18 +198,34 @@ class GameService:
     def submit_vote(self, game_id: str, voter_id: str, vote_data: Dict) -> PlayerVote:
         """Submit a player's vote/guess"""
         game = self.db.query(GameSession).filter(GameSession.id == game_id).first()
+        if not game:
+            raise ValueError("Game not found")
         
         vote = PlayerVote(
+            id=str(uuid.uuid4()),
             game_id=game_id,
-            round_number=game.current_round if game else 0,
             voter_id=voter_id,
             voted_ai_id=vote_data.get("voted_ai_id"),
             guessed_partner_id=vote_data.get("guessed_partner_id")
         )
-        
         self.db.add(vote)
         self.db.commit()
         return vote
+    
+    def get_game(self, game_id: str) -> Optional[GameSession]:
+        return self.db.query(GameSession).filter(GameSession.id == game_id).first()
+    
+    def get_players(self, game_id: str) -> List[Player]:
+        return self.db.query(Player).filter(Player.game_id == game_id).all()
+    
+    def get_player(self, player_id: str) -> Optional[Player]:
+        return self.db.query(Player).filter(Player.id == player_id).first()
+    
+    def get_messages(self, game_id: str, phase: Optional[str] = None) -> List[GameMessage]:
+        query = self.db.query(GameMessage).filter(GameMessage.game_id == game_id)
+        if phase:
+            query = query.filter(GameMessage.phase == phase)
+        return query.order_by(GameMessage.created_at.asc()).all()
     
     async def finish_game(self, game_id: str) -> GameResult:
         """Calculate results and finish game"""
@@ -280,25 +296,8 @@ class GameService:
     
     # HELPER METHODS
     
-    def get_game(self, game_id: str) -> Optional[GameSession]:
-        return self.db.query(GameSession).filter(GameSession.id == game_id).first()
-    
-    def get_players(self, game_id: str) -> List[Player]:
-        return self.db.query(Player).filter(Player.game_id == game_id).all()
-    
     def get_personality_profile(self, player_id: str) -> Optional[PersonalityProfile]:
         return self.db.query(PersonalityProfile).filter(
             PersonalityProfile.player_id == player_id
         ).first()
-    
-    def get_messages(self, game_id: str, phase: Optional[str] = None, 
-                    round_num: Optional[int] = None) -> List[GameMessage]:
-        query = self.db.query(GameMessage).filter(GameMessage.game_id == game_id)
-        
-        if phase:
-            query = query.filter(GameMessage.phase == phase)
-        if round_num is not None:
-            query = query.filter(GameMessage.round_number == round_num)
-        
-        return query.order_by(GameMessage.timestamp).all()
 
