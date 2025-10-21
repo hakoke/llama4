@@ -262,6 +262,7 @@ function GameApp() {
           messages={messages}
           onSendMessage={sendMessage}
           username={username}
+          gameId={gameId}
           onBackToMenu={backToMenu}
         />
       )}

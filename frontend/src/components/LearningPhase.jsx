@@ -1,16 +1,22 @@
 import { useState, useEffect, useRef } from 'react'
 import './LearningPhase.css'
 
-function LearningPhase({ messages, onSendMessage, username, onBackToMenu }) {
+function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId }) {
   const [input, setInput] = useState('')
   const [timeLeft, setTimeLeft] = useState(180) // 3 minutes
   const messagesEndRef = useRef(null)
+  const hasTriggeredResearch = useRef(false)
   
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 0) {
           clearInterval(timer)
+          // Trigger research phase when timer ends
+          if (!hasTriggeredResearch.current && gameId) {
+            hasTriggeredResearch.current = true
+            triggerResearchPhase()
+          }
           return 0
         }
         return prev - 1
@@ -18,7 +24,18 @@ function LearningPhase({ messages, onSendMessage, username, onBackToMenu }) {
     }, 1000)
     
     return () => clearInterval(timer)
-  }, [])
+  }, [gameId])
+  
+  const triggerResearchPhase = async () => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+      await fetch(`${API_URL}/game/${gameId}/research`, {
+        method: 'POST'
+      })
+    } catch (error) {
+      console.error('Error starting research:', error)
+    }
+  }
   
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
