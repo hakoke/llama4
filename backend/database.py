@@ -1,8 +1,8 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Float, JSON, Boolean, ForeignKey, text
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Float, JSON, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
-from pgvector.sqlalchemy import Vector
+# from pgvector.sqlalchemy import Vector  # removed for Railway compatibility
 from config import get_settings
 
 settings = get_settings()
@@ -188,7 +188,7 @@ class Message(Base):
     content = Column(Text)
     image_url = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
-    embedding = Column(Vector(1536), nullable=True)
+    embedding = Column(JSON, nullable=True)
 
 class Memory(Base):
     __tablename__ = "memories"
@@ -200,7 +200,7 @@ class Memory(Base):
     confidence = Column(Float, default=1.0)
     timestamp = Column(DateTime, default=datetime.utcnow)
     meta_info = Column(JSON, nullable=True)
-    embedding = Column(Vector(1536), nullable=True)
+    embedding = Column(JSON, nullable=True)
 
 class Session(Base):
     __tablename__ = "sessions"
@@ -213,15 +213,6 @@ class Session(Base):
 
 def init_db():
     """Initialize database and create tables"""
-    # Enable pgvector extension
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-            conn.commit()
-    except Exception as e:
-        print(f"pgvector extension note: {e}")
-        # Continue anyway - extension might already exist or not be needed
-    
     Base.metadata.create_all(bind=engine)
 
 def get_db():
