@@ -1,0 +1,327 @@
+.lobby-container {
+  min-height: 100vh;
+  padding: 40px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lobby-content {
+  max-width: 1200px;
+  width: 100%;
+  animation: slideIn 0.6s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.lobby-title {
+  font-size: 48px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, #9D4EDD 0%, #00F5FF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.game-id-display {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 20px 30px;
+  border-radius: 16px;
+  margin-bottom: 40px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.game-id-display span {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.game-id-display code {
+  font-size: 24px;
+  font-weight: 700;
+  color: #00F5FF;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 3px;
+}
+
+.copy-btn {
+  background: linear-gradient(135deg, #9D4EDD, #00F5FF);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.copy-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 20px rgba(157, 78, 221, 0.4);
+}
+
+.lobby-sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+.players-section,
+.handles-section {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 30px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.players-section h2,
+.handles-section h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+  color: #00F5FF;
+}
+
+.players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.player-card {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 16px 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+  animation: playerJoin 0.4s ease-out;
+}
+
+@keyframes playerJoin {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.player-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(157, 78, 221, 0.3);
+}
+
+.player-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #9D4EDD, #00F5FF);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.player-name {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.you-badge,
+.host-badge {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.you-badge {
+  background: linear-gradient(135deg, #FF006E, #FF6B9D);
+}
+
+.host-badge {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #000;
+}
+
+.waiting-message {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  margin-top: 16px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.handles-hint {
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.handles-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.handles-form input {
+  width: 100%;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.handles-form input:focus {
+  outline: none;
+  border-color: #9D4EDD;
+  box-shadow: 0 0 15px rgba(157, 78, 221, 0.3);
+}
+
+.handles-form input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.submit-handles-btn {
+  background: linear-gradient(135deg, #9D4EDD, #00F5FF);
+  border: none;
+  padding: 14px 28px;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+}
+
+.submit-handles-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(157, 78, 221, 0.4);
+}
+
+.handles-submitted {
+  text-align: center;
+  padding: 30px;
+  animation: checkmarkBounce 0.6s ease-out;
+}
+
+@keyframes checkmarkBounce {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.check-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.host-controls {
+  text-align: center;
+  margin-top: 40px;
+}
+
+.start-game-btn {
+  background: linear-gradient(135deg, #FF006E, #9D4EDD);
+  border: none;
+  padding: 18px 48px;
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(255, 0, 110, 0.3);
+}
+
+.start-game-btn:not(:disabled):hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 15px 40px rgba(255, 0, 110, 0.5);
+}
+
+.start-game-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.waiting-for-host {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+  margin-top: 40px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.game-mode-info {
+  background: rgba(0, 245, 255, 0.05);
+  padding: 24px;
+  border-radius: 16px;
+  margin-top: 30px;
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  text-align: center;
+}
+
+.game-mode-info h3 {
+  font-size: 20px;
+  color: #00F5FF;
+  margin-bottom: 12px;
+}
+
+.game-mode-info p {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .lobby-sections {
+    grid-template-columns: 1fr;
+  }
+  
+  .lobby-title {
+    font-size: 36px;
+  }
+}
+
