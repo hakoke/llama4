@@ -1,43 +1,32 @@
 import { useState } from 'react'
 import './Lobby.css'
 
-function Lobby({ gameId, playerId, players, gameMode, onUpdateHandles, onStartGame }) {
-  const [handles, setHandles] = useState({
-    instagram: '',
-    twitter: '',
-    linkedin: '',
-    tiktok: ''
-  })
-  const [handlesSubmitted, setHandlesSubmitted] = useState(false)
-  
-  const handleSubmitHandles = () => {
-    const filledHandles = Object.fromEntries(
-      Object.entries(handles).filter(([_, v]) => v.trim() !== '')
-    )
-    onUpdateHandles(filledHandles)
-    setHandlesSubmitted(true)
-  }
-  
+function Lobby({ gameId, playerId, username, players, gameMode, onStartGame, onBackToMenu }) {
   const isHost = players.length > 0 && players[0].id === playerId
-  const canStart = players.length >= 3 && players.length <= 8
+  const canStart = players.length >= 2 && players.length <= 8
   
   return (
     <div className="lobby-container">
       <div className="lobby-content">
-        <h1 className="lobby-title">Game Lobby</h1>
-        <div className="game-id-display">
-          <span>Game ID:</span>
-          <code>{gameId}</code>
-          <button 
-            className="copy-btn"
-            onClick={() => navigator.clipboard.writeText(gameId)}
-          >
-            📋 Copy
+        <div className="lobby-header-section">
+          <button className="back-btn" onClick={onBackToMenu}>
+            ← Back to Menu
           </button>
+          <h1 className="lobby-title">Game Lobby</h1>
+          <div className="game-id-display">
+            <span>Game ID:</span>
+            <code>{gameId}</code>
+            <button 
+              className="copy-btn"
+              onClick={() => navigator.clipboard.writeText(gameId)}
+            >
+              📋 Copy
+            </button>
+          </div>
         </div>
         
         <div className="lobby-sections">
-          <div className="players-section">
+          <div className="players-section-full">
             <h2>Players ({players.length})</h2>
             <div className="players-list">
               {players.map((player, idx) => (
@@ -49,53 +38,15 @@ function Lobby({ gameId, playerId, players, gameMode, onUpdateHandles, onStartGa
                 </div>
               ))}
             </div>
-            {players.length < 3 && (
-              <p className="waiting-message">Waiting for {3 - players.length} more player(s)...</p>
+            {players.length < 2 && (
+              <p className="waiting-message">Waiting for {2 - players.length} more player(s)...</p>
             )}
-          </div>
-          
-          <div className="handles-section">
-            <h2>Social Media Handles</h2>
-            <p className="handles-hint">
-              The AI will search for you online to learn more about you!
-            </p>
             
-            {!handlesSubmitted ? (
-              <div className="handles-form">
-                <input
-                  type="text"
-                  placeholder="Instagram username"
-                  value={handles.instagram}
-                  onChange={(e) => setHandles({...handles, instagram: e.target.value})}
-                />
-                <input
-                  type="text"
-                  placeholder="Twitter/X handle"
-                  value={handles.twitter}
-                  onChange={(e) => setHandles({...handles, twitter: e.target.value})}
-                />
-                <input
-                  type="text"
-                  placeholder="LinkedIn profile"
-                  value={handles.linkedin}
-                  onChange={(e) => setHandles({...handles, linkedin: e.target.value})}
-                />
-                <input
-                  type="text"
-                  placeholder="TikTok username"
-                  value={handles.tiktok}
-                  onChange={(e) => setHandles({...handles, tiktok: e.target.value})}
-                />
-                <button className="submit-handles-btn" onClick={handleSubmitHandles}>
-                  Submit Handles
-                </button>
-              </div>
-            ) : (
-              <div className="handles-submitted">
-                <span className="check-icon">✅</span>
-                <p>Handles submitted!</p>
-              </div>
-            )}
+            <div className="lobby-info-box">
+              <h3>ℹ️ What Happens Next</h3>
+              <p>During the learning phase, the AI will ask you questions including your social media handles.</p>
+              <p>Be ready to share: Instagram, Twitter, TikTok, LinkedIn, etc.</p>
+            </div>
           </div>
         </div>
         
@@ -106,7 +57,7 @@ function Lobby({ gameId, playerId, players, gameMode, onUpdateHandles, onStartGa
               onClick={onStartGame}
               disabled={!canStart}
             >
-              {canStart ? 'Start Game 🚀' : `Need ${3 - players.length} more players`}
+              {canStart ? 'Start Game 🚀' : `Need ${2 - players.length} more players`}
             </button>
           </div>
         )}

@@ -95,16 +95,23 @@ function GameApp() {
     }
   }
   
-  const joinGame = async (gameIdToJoin, playerName) => {
+  const joinGame = async (gameIdToJoin) => {
+    // Ask for username first
+    const playerName = prompt('Enter your username:')
+    if (!playerName || !playerName.trim()) {
+      alert('Username is required!')
+      return
+    }
+    
     try {
       const response = await axios.post(`${API_URL}/game/join`, {
         game_id: gameIdToJoin,
-        username: playerName
+        username: playerName.trim()
       })
       
       setGameId(gameIdToJoin)
       setPlayerId(response.data.player_id)
-      setUsername(playerName)
+      setUsername(playerName.trim())
       setGameState('lobby')
       
       // Fetch game state
@@ -115,6 +122,49 @@ function GameApp() {
       console.error('Error joining game:', error)
       alert('Failed to join game: ' + (error.response?.data?.detail || error.message))
     }
+  }
+  
+  const createAndJoinGame = async (mode) => {
+    // Ask for username
+    const playerName = prompt('Enter your username:')
+    if (!playerName || !playerName.trim()) {
+      alert('Username is required!')
+      return
+    }
+    
+    try {
+      // Create game
+      const createResponse = await axios.post(`${API_URL}/game/create`, { mode })
+      const newGameId = createResponse.data.game_id
+      
+      // Join the game
+      const joinResponse = await axios.post(`${API_URL}/game/join`, {
+        game_id: newGameId,
+        username: playerName.trim()
+      })
+      
+      setGameId(newGameId)
+      setPlayerId(joinResponse.data.player_id)
+      setUsername(playerName.trim())
+      setGameMode(mode)
+      setGameState('lobby')
+      
+      // Fetch game state
+      const gameResponse = await axios.get(`${API_URL}/game/${newGameId}`)
+      setPlayers(gameResponse.data.players)
+    } catch (error) {
+      console.error('Error creating game:', error)
+      alert('Failed to create game')
+    }
+  }
+  
+  const backToMenu = () => {
+    setGameState('menu')
+    setGameId(null)
+    setPlayerId(null)
+    setUsername('')
+    setPlayers([])
+    setMessages([])
   }
   
   const sendMessage = (content) => {
@@ -165,12 +215,12 @@ function GameApp() {
             <div className="menu-options">
               <div className="game-mode-selection">
                 <h2>Create Game</h2>
-                <button className="mode-btn group" onClick={() => createGame('group')}>
+                <button className="mode-btn group" onClick={() => createAndJoinGame('group')}>
                   <span className="mode-icon">👥</span>
                   <span className="mode-name">Group Mode</span>
                   <span className="mode-desc">Everyone chats, find the AI</span>
                 </button>
-                <button className="mode-btn private" onClick={() => createGame('private')}>
+                <button className="mode-btn private" onClick={() => createAndJoinGame('private')}>
                   <span className="mode-icon">💬</span>
                   <span className="mode-name">Private Mode</span>
                   <span className="mode-desc">1-on-1 rounds, guess who's who</span>
@@ -181,14 +231,11 @@ function GameApp() {
                 <h2>Or Join Game</h2>
                 <input
                   type="text"
-                  placeholder="Game ID"
+                  placeholder="Enter Game ID and press Enter"
                   className="game-id-input"
                   onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      const playerName = prompt('Enter your username:')
-                      if (playerName) {
-                        joinGame(e.target.value, playerName)
-                      }
+                    if (e.key === 'Enter' && e.target.value.trim()) {
+                      joinGame(e.target.value.trim())
                     }
                   }}
                 />
@@ -202,10 +249,11 @@ function GameApp() {
         <Lobby
           gameId={gameId}
           playerId={playerId}
+          username={username}
           players={players}
           gameMode={gameMode}
-          onUpdateHandles={updateHandles}
           onStartGame={startGame}
+          onBackToMenu={backToMenu}
         />
       )}
       
@@ -214,6 +262,7 @@ function GameApp() {
           messages={messages}
           onSendMessage={sendMessage}
           username={username}
+          onBackToMenu={backToMenu}
         />
       )}
       

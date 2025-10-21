@@ -23,11 +23,36 @@
   }
 }
 
+.lobby-header-section {
+  position: relative;
+  margin-bottom: 30px;
+}
+
+.back-btn {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateX(-3px);
+}
+
 .lobby-title {
   font-size: 48px;
   font-weight: 700;
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
+  margin-top: 50px;
   background: linear-gradient(135deg, #9D4EDD 0%, #00F5FF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -79,20 +104,20 @@
 }
 
 .lobby-sections {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
+  display: flex;
+  justify-content: center;
   margin-bottom: 40px;
 }
 
-.players-section,
-.handles-section {
+.players-section-full {
   background: rgba(255, 255, 255, 0.05);
   padding: 30px;
   border-radius: 20px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   animation: fadeIn 0.6s ease-out;
+  max-width: 700px;
+  width: 100%;
 }
 
 @keyframes fadeIn {
@@ -100,11 +125,32 @@
   to { opacity: 1; }
 }
 
-.players-section h2,
-.handles-section h2 {
+.players-section-full h2 {
   font-size: 24px;
   margin-bottom: 20px;
   color: #00F5FF;
+  text-align: center;
+}
+
+.lobby-info-box {
+  margin-top: 30px;
+  padding: 20px;
+  background: rgba(157, 78, 221, 0.1);
+  border: 1px solid rgba(157, 78, 221, 0.3);
+  border-radius: 12px;
+}
+
+.lobby-info-box h3 {
+  font-size: 18px;
+  color: #9D4EDD;
+  margin-bottom: 12px;
+}
+
+.lobby-info-box p {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+  margin-bottom: 8px;
 }
 
 .players-list {

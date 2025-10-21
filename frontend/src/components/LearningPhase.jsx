@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import './LearningPhase.css'
 
-function LearningPhase({ messages, onSendMessage, username }) {
+function LearningPhase({ messages, onSendMessage, username, onBackToMenu }) {
   const [input, setInput] = useState('')
   const [timeLeft, setTimeLeft] = useState(180) // 3 minutes
   const messagesEndRef = useRef(null)
@@ -42,6 +42,9 @@ function LearningPhase({ messages, onSendMessage, username }) {
   return (
     <div className="learning-phase">
       <div className="phase-header">
+        <button className="back-btn-small" onClick={onBackToMenu}>
+          ← Leave Game
+        </button>
         <h1>Learning Phase</h1>
         <p>The AI is getting to know you...</p>
       </div>
