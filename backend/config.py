@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://postgres:wlfrfCfSOCDAKFwzOqRogeixzVOXiyET@turntable.proxy.rlwy.net:39953/railway"
     
     # AI Model
-    local_model_url: str = "http://44.192.31.111:8000"  # ✅ EC2 READY!
+    local_model_url: str = "http://98.85.228.199:8000"  # ✅ NEW EC2 IP!
     use_local_model: bool = True
     openrouter_api_key: str = ""
     anthropic_api_key: str = ""
