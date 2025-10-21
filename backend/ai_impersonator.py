@@ -410,6 +410,10 @@ Be honest. Think deeply. Grow smarter."""
                 }
                 model_name = "meta-llama/llama-4-maverick"
             
+            # For local model, use the actual model name from vLLM
+            if self.use_local:
+                model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
+            
             response = await client.post(
                 url,
                 headers=headers,
@@ -418,13 +422,16 @@ Be honest. Think deeply. Grow smarter."""
                     "messages": messages,
                     "temperature": temperature,
                     "max_tokens": max_tokens
-                }
+                },
+                timeout=60.0
             )
             
             if response.status_code == 200:
                 data = response.json()
                 return data["choices"][0]["message"]["content"]
             else:
+                error_text = response.text
+                print(f"AI Error: {response.status_code} - {error_text}")
                 return "Error generating response"
 
 ai_impersonator = AIImpersonator()
