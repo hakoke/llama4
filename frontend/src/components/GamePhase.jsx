@@ -1,17 +1,40 @@
 import { useState, useEffect, useRef } from 'react'
 import './GamePhase.css'
 
-function GamePhase({ gameMode, messages, players, onSendMessage, playerId }) {
+function GamePhase({ gameMode, messages, players, onSendMessage, playerId, gameId }) {
   const [input, setInput] = useState('')
   const [timeLeft, setTimeLeft] = useState(gameMode === 'group' ? 300 : 120)
   const messagesEndRef = useRef(null)
+  const hasTriggeredVoting = useRef(false)
   
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft(prev => Math.max(0, prev - 1))
+      setTimeLeft(prev => {
+        if (prev <= 0) {
+          clearInterval(timer)
+          // Trigger voting phase when timer ends
+          if (!hasTriggeredVoting.current && gameId) {
+            hasTriggeredVoting.current = true
+            triggerVotingPhase()
+          }
+          return 0
+        }
+        return prev - 1
+      })
     }, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [gameId])
+  
+  const triggerVotingPhase = async () => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+      await fetch(`${API_URL}/game/${gameId}/voting`, {
+        method: 'POST'
+      })
+    } catch (error) {
+      console.error('Error starting voting:', error)
+    }
+  }
   
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })

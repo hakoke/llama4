@@ -191,10 +191,33 @@ async def start_research(game_id: str, db: Session = Depends(get_db)):
     # Notify players game is starting
     await manager.broadcast_to_game({
         "type": "phase_change",
-        "phase": "playing"
+        "phase": "playing",
+        "duration": 300  # 5 minutes for group
     }, game_id)
     
     return {"status": "game_started"}
+
+@app.post("/game/{game_id}/voting")
+async def start_voting(game_id: str, db: Session = Depends(get_db)):
+    """Start voting phase"""
+    game_service = GameService(db)
+    game = game_service.get_game(game_id)
+    
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    # Update game status
+    game.status = "voting"
+    db.commit()
+    
+    # Notify all players
+    await manager.broadcast_to_game({
+        "type": "phase_change",
+        "phase": "voting",
+        "message": "Time to vote!"
+    }, game_id)
+    
+    return {"status": "voting_started"}
 
 @app.post("/game/{game_id}/player/{player_id}/vote")
 async def submit_vote(
@@ -213,7 +236,32 @@ async def submit_vote(
     
     vote = game_service.submit_vote(game_id, player_id, vote_data)
     
+    # Check if all players have voted
+    game = game_service.get_game(game_id)
+    players = game_service.get_players(game_id)
+    votes = db.query(PlayerVote).filter(PlayerVote.game_id == game_id).all()
+    
+    if len(votes) >= len(players):
+        # All votes are in! Trigger results
+        asyncio.create_task(finish_game_auto(game_id, db))
+    
     return {"status": "vote_submitted"}
+
+async def finish_game_auto(game_id: str, db: Session):
+    """Auto-finish game when all votes are in"""
+    await asyncio.sleep(2)  # Small delay for dramatic effect
+    game_service = GameService(db)
+    result = await game_service.finish_game(game_id)
+    
+    # Broadcast results to all players
+    await manager.broadcast_to_game({
+        "type": "game_finished",
+        "results": {
+            "ai_target": result.ai_target_id if hasattr(result, 'ai_target_id') else None,
+            "ai_success_rate": result.ai_success_rate,
+            "analysis": result.analysis
+        }
+    }, game_id)
 
 @app.post("/game/{game_id}/finish")
 async def finish_game(game_id: str, db: Session = Depends(get_db)):

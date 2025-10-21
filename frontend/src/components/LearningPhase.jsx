@@ -93,19 +93,24 @@ function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId
       
       <div className="chat-container">
         <div className="messages-list">
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`message ${msg.sender_id === 'ai' ? 'ai' : 'user'}`}
-            >
-              <div className="message-bubble">
-                <span className="message-sender">
-                  {msg.sender_id === 'ai' ? '🤖 AI' : `👤 ${username}`}
-                </span>
-                <p>{msg.content}</p>
+          {messages.map((msg, idx) => {
+            const isAI = msg.sender_id === 'ai'
+            const isYou = msg.sender_id !== 'ai'
+            
+            return (
+              <div
+                key={idx}
+                className={`message ${isAI ? 'ai' : 'user'}`}
+              >
+                <div className="message-bubble">
+                  <span className="message-sender">
+                    {isAI ? '🤖 AI' : `👤 ${msg.username || username}`}
+                  </span>
+                  <p>{msg.content}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
           <div ref={messagesEndRef} />
         </div>
         

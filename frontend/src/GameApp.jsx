@@ -61,6 +61,7 @@ function GameApp() {
       case 'chat_message':
         setMessages(prev => [...prev, {
           sender_id: data.sender_id,
+          username: data.username,
           content: data.content,
           timestamp: data.timestamp || new Date().toISOString()
         }])
@@ -278,6 +279,7 @@ function GameApp() {
           players={players}
           onSendMessage={sendMessage}
           playerId={playerId}
+          gameId={gameId}
         />
       )}
       
