@@ -83,7 +83,7 @@ function ResultsPhase({ results, players, onPlayAgain }) {
         <button
           onClick={() => {
             navigator.clipboard.writeText(
-              `AI Impostor fooled ${Math.round(results.ai_success_rate * 100)}% of players. Can you beat it?`
+              `Unmasked: The AI Among Us fooled ${Math.round(results.ai_success_rate * 100)}% of players. Can you beat it?`
             )
             alert('Result copied to clipboard!')
           }}

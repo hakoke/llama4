@@ -13,7 +13,7 @@ from game_service import GameService
 from websocket_handler import manager
 from ai_impersonator import ai_impersonator
 
-app = FastAPI(title="AI Impostor Game API")
+app = FastAPI(title="Unmasked: The AI Among Us API")
 
 # CORS
 app.add_middleware(
@@ -57,7 +57,7 @@ class VoteRequest(BaseModel):
 @app.get("/")
 async def root():
     return {
-        "game": "AI Impostor - Turing Test Game",
+        "game": "Unmasked: The AI Among Us",
         "version": "1.0.0",
         "status": "ready"
     }

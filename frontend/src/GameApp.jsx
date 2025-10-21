@@ -11,6 +11,7 @@ import ResultsPhase from './components/ResultsPhase'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000'
+const GAME_NAME = 'Unmasked: The AI Among Us'
 
 const PHASE_HUD = {
   menu: {
@@ -50,6 +51,9 @@ function GameApp() {
   const [username, setUsername] = useState('')
   const [players, setPlayers] = useState([])
   const [gameMode, setGameMode] = useState('group')
+  const [playerName, setPlayerName] = useState('')
+  const [joinCode, setJoinCode] = useState('')
+  const [menuError, setMenuError] = useState('')
 
   const [messages, setMessages] = useState([])
   const [phaseTimers, setPhaseTimers] = useState({
@@ -202,39 +206,45 @@ function GameApp() {
     setSoundOn(true)
   }
 
-  const createGame = async (mode) => {
-    const playerName = prompt('Enter your username:')?.trim()
-    if (!playerName) {
-      alert('Username is required!')
+  const createGame = async (mode, providedName) => {
+    const finalName = (providedName ?? playerName).trim()
+    if (!finalName) {
+      setMenuError('Enter a username to spawn a session.')
       return
     }
+    setMenuError('')
     try {
       const { data: created } = await axios.post(`${API_URL}/game/create`, { mode })
-      await joinGame(created.game_id, playerName)
+      await joinGame(created.game_id, finalName, { skipModal: true })
     } catch (error) {
       console.error('Error creating game:', error)
       alert('Failed to create game')
     }
   }
 
-  const joinGame = async (gameIdToJoin, providedName) => {
-    const name = providedName ?? prompt('Enter your username:')?.trim()
-    if (!name) {
-      alert('Username is required!')
+  const joinGame = async (gameIdToJoin, providedName, options = {}) => {
+    const finalName = (providedName ?? playerName).trim()
+    if (!finalName) {
+      setMenuError('Enter a username before joining a game.')
       return
     }
+    setMenuError('')
     try {
       const { data } = await axios.post(`${API_URL}/game/join`, {
         game_id: gameIdToJoin,
-        username: name
+        username: finalName
       })
       setGameId(gameIdToJoin)
       setPlayerId(data.player_id)
-      setUsername(name)
+      setUsername(finalName)
       setPhase('lobby')
       const gameResponse = await axios.get(`${API_URL}/game/${gameIdToJoin}`)
       setPlayers(gameResponse.data.players)
       setGameMode(gameResponse.data.mode)
+      if (!options.skipModal) {
+        setPlayerName('')
+        setJoinCode('')
+      }
     } catch (error) {
       console.error('Error joining game:', error)
       alert('Failed to join game: ' + (error.response?.data?.detail || error.message))
@@ -277,6 +287,19 @@ function GameApp() {
     }
   }
 
+  const joinExistingGame = async () => {
+    const code = joinCode.trim()
+    if (!code) {
+      setMenuError('Enter an access code to join an existing session.')
+      return
+    }
+    if (!playerName.trim()) {
+      setMenuError('Set your username before joining a session.')
+      return
+    }
+    await joinGame(code, playerName)
+  }
+
   const filteredLearningMessages = useMemo(() => (
     messages.filter((msg) => msg.recipient_id === playerId || msg.sender_id === playerId)
   ), [messages, playerId])
@@ -299,8 +322,8 @@ function GameApp() {
       <div className="game-stage">
         <header className="hud-header">
           <div className="hud-title">
-            <span>AI Impostor Protocol</span>
-            <h1>Neon Deception Suite</h1>
+            <span>Phase Console</span>
+            <h1>{GAME_NAME}</h1>
           </div>
           <div className="hud-phase">
             <span>{phaseHud.label}</span>
@@ -336,7 +359,7 @@ function GameApp() {
             >
               <div className="panel-header">
                 <div className="panel-title">
-                  <h1>AI Impostor</h1>
+                  <h1>{GAME_NAME}</h1>
                   <span className="panel-subtitle">Neural Social Deduction Protocol</span>
                 </div>
               </div>
@@ -350,12 +373,24 @@ function GameApp() {
                   A rogue consciousness learns your tells, mirrors your vibe, and crashes your chat.
                   Think you can unmask it before it becomes you?
                 </p>
+                <div className="menu-field">
+                  <label htmlFor="menu-username">Choose your codename</label>
+                  <div className="menu-input-shell">
+                    <input
+                      id="menu-username"
+                      type="text"
+                      value={playerName}
+                      onChange={(e) => setPlayerName(e.target.value)}
+                      placeholder="e.g. shadow cassette"
+                    />
+                  </div>
+                </div>
                 <div className="menu-actions">
                   <motion.button
                     className="mode-card group"
                     whileHover={{ translateY: -8, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => createGame('group')}
+                    onClick={() => createGame('group', playerName)}
                   >
                     <span className="mode-label">Group Arena</span>
                     <span className="mode-desc">One impostor. One room. Five minutes to expose them.</span>
@@ -364,25 +399,37 @@ function GameApp() {
                     className="mode-card private"
                     whileHover={{ translateY: -8, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => createGame('private')}
+                    onClick={() => createGame('private', playerName)}
                   >
                     <span className="mode-label">Private Rotation</span>
                     <span className="mode-desc">Two minute duels. Rotating impostors. Trust nothing.</span>
                   </motion.button>
                 </div>
                 <div className="menu-join">
-                  <span className="menu-join-label">Join by Access Code</span>
-                  <input
-                    type="text"
-                    placeholder="ENTER CODE"
-                    className="menu-join-input"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                        joinGame(e.currentTarget.value.trim())
-                      }
-                    }}
-                  />
+                  <span className="menu-join-label">Have an access code?</span>
+                  <div className="menu-join-controls">
+                    <input
+                      type="text"
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          joinExistingGame()
+                        }
+                      }}
+                      placeholder="ENTER CODE"
+                      className="menu-join-input"
+                    />
+                    <button
+                      type="button"
+                      className="menu-join-button"
+                      onClick={joinExistingGame}
+                    >
+                      Join Game
+                    </button>
+                  </div>
                 </div>
+                {menuError && <p className="menu-error">{menuError}</p>}
               </motion.div>
             </motion.section>
           )}

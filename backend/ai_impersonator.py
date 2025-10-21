@@ -329,7 +329,7 @@ Write 3-4 paragraphs per player. Be REAL."""
         return await self._call_model([{"role": "user", "content": prompt}], temperature=0.8)
 
     async def extract_player_insights(self, game_id: str, players: List, analysis: str) -> List[Dict]:
-        prompt = f"""You generated the following brutal analysis of players after the AI Impostor game:
+        prompt = f"""You generated the following brutal analysis of players after the Unmasked: The AI Among Us session:
 
 {analysis}
 
