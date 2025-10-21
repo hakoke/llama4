@@ -86,6 +86,10 @@ async def join_game(request: JoinGameRequest, db: Session = Depends(get_db)):
     
     if game.status != "lobby":
         raise HTTPException(status_code=400, detail="Game already started")
+
+    players = game_service.get_players(request.game_id)
+    if len(players) >= 5:
+        raise HTTPException(status_code=400, detail="Lobby is full (max 5 players)")
     
     player = game_service.join_game(request.game_id, request.username)
     
@@ -163,6 +167,10 @@ async def start_game(game_id: str, db: Session = Depends(get_db)):
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
     
+    players = game_service.get_players(game_id)
+    if len(players) < 2:
+        raise HTTPException(status_code=400, detail="Need at least 2 players to start")
+
     game_service.start_learning_phase(game_id)
     
     # Notify all players

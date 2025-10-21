@@ -1,9 +1,22 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { useState } from 'react'
 import './Lobby.css'
 
 function Lobby({ gameId, playerId, username, players, gameMode, onStartGame, onBackToMenu }) {
   const isHost = players.length > 0 && players[0].id === playerId
-  const canStart = players.length >= 3 && players.length <= 8
+  const canStart = players.length >= 2 && players.length <= 5
+  const [copyFeedback, setCopyFeedback] = useState('')
+
+  const handleCopyGameId = async () => {
+    try {
+      await navigator.clipboard.writeText(gameId)
+      setCopyFeedback('Copied!')
+      setTimeout(() => setCopyFeedback(''), 2000)
+    } catch (error) {
+      setCopyFeedback('Failed to copy')
+      setTimeout(() => setCopyFeedback(''), 2000)
+    }
+  }
 
   return (
     <div className="lobby-frame">
@@ -12,7 +25,9 @@ function Lobby({ gameId, playerId, username, players, gameMode, onStartGame, onB
         <div className="session-chip">
           <span>Lobby</span>
           <strong>{gameId}</strong>
-          <button onClick={() => navigator.clipboard.writeText(gameId)}>Copy</button>
+          <button onClick={handleCopyGameId}>
+            {copyFeedback || 'Copy'}
+          </button>
         </div>
       </div>
 
@@ -20,7 +35,7 @@ function Lobby({ gameId, playerId, username, players, gameMode, onStartGame, onB
         <div className="lobby-col players">
           <header className="lobby-section-header">
             <h2>Connected Players</h2>
-            <span>{players.length}/8 online</span>
+            <span>{players.length}/5 online</span>
           </header>
           <ul className="player-grid">
             <AnimatePresence>
@@ -51,7 +66,7 @@ function Lobby({ gameId, playerId, username, players, gameMode, onStartGame, onB
             </AnimatePresence>
           </ul>
           {!canStart && (
-            <p className="lobby-hint">Need {Math.max(0, 3 - players.length)} more players to ignite.</p>
+            <p className="lobby-hint">Need {Math.max(0, 2 - players.length)} more players to ignite.</p>
           )}
         </div>
 
