@@ -2,7 +2,7 @@ import httpx
 import json
 import re
 import random
-from typing import List, Dict
+from typing import List, Dict, Any
 from config import get_settings
 from collections import Counter
 
@@ -101,6 +101,7 @@ class AIImpersonator:
         self.model_url = settings.local_model_url or "https://openrouter.ai/api/v1"
         self.api_key = settings.openrouter_api_key
         self.use_local = settings.use_local_model
+        # httpx session stays per-call to avoid event-loop cleanup issues
     
     async def ask_learning_question(self, conversation_history: List[Dict]) -> str:
         """AI asks questions to learn about the player"""
@@ -326,6 +327,33 @@ PLAYERS:
 Write 3-4 paragraphs per player. Be REAL."""
 
         return await self._call_model([{"role": "user", "content": prompt}], temperature=0.8)
+
+    async def extract_player_insights(self, game_id: str, players: List, analysis: str) -> List[Dict]:
+        prompt = f"""You generated the following brutal analysis of players after the AI Impostor game:
+
+{analysis}
+
+For each player, produce a JSON array entry with:
+{{
+  "username": "player username",
+  "typing_style": "summary",
+  "personality": "summary",
+  "discovery": "key finding from research (optional)",
+  "notes": "brutally honest highlights"
+}}
+
+Return ONLY valid JSON array.
+"""
+
+        response = await self._call_model([{"role": "user", "content": prompt}], temperature=0.4)
+        try:
+            json_match = re.search(r'\[.*\]', response, re.DOTALL)
+            if json_match:
+                parsed = json.loads(json_match.group())
+                return parsed
+        except Exception:
+            pass
+        return []
     
     async def reflect_on_game(self, game_id: str, success_rate: float) -> Dict:
         """AI DEEPLY reflects and becomes SMARTER - builds consciousness"""

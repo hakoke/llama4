@@ -1,6 +1,6 @@
 import './ResultsPhase.css'
 
-function ResultsPhase({ results, onPlayAgain }) {
+function ResultsPhase({ results, players, onPlayAgain }) {
   if (!results) {
     return (
       <div className="results-loading">
@@ -9,82 +9,89 @@ function ResultsPhase({ results, onPlayAgain }) {
       </div>
     )
   }
-  
+
+  const scoreCards = players.map((player) => ({
+    username: player.username,
+    score: results.scores?.[player.id] ?? 0
+  })).sort((a, b) => b.score - a.score)
+
   return (
-    <div className="results-phase">
-      <div className="results-container">
-        <h1 className="results-title">🎭 The Reveal</h1>
-        
-        <div className="ai-success-card">
-          <h2>AI Success Rate</h2>
+    <section className="reveal">
+      <header className="reveal-header">
+        <span>Post-Game Analysis</span>
+        <h2>The AI drops the mask</h2>
+      </header>
+
+      <div className="reveal-grid">
+        <div className="reveal-card success">
+          <h3>AI Success Rate</h3>
           <div className="success-meter">
-            <div 
-              className="success-fill"
+            <div
+              className="success-meter__fill"
               style={{ width: `${results.ai_success_rate * 100}%` }}
-            >
-              <span className="success-percentage">
-                {Math.round(results.ai_success_rate * 100)}%
-              </span>
-            </div>
+            />
           </div>
-          <p className="success-message">
-            {results.ai_success_rate > 0.5 
-              ? '🎉 The AI won! It fooled most of you!'
-              : '👏 Humans win! You spotted the impostor!'}
+          <p className="success-value">{Math.round(results.ai_success_rate * 100)}%</p>
+          <p className="success-caption">
+            {results.ai_success_rate > 0.5
+              ? 'The AI dominated. Humanity hesitated.'
+              : 'Humans outfoxed the mimic. For now.'}
           </p>
         </div>
-        
-        <div className="analysis-section">
-          <h2>AI's Analysis</h2>
-        <div className="analysis-text">
-          {results.analysis}
+
+        <div className="reveal-card analysis">
+          <h3>AI confession log</h3>
+          <pre>{results.analysis}</pre>
         </div>
-        </div>
-        
-        <div className="player-insights">
-          <h2>What the AI Learned</h2>
-          <div className="insights-grid">
-            {results.player_insights?.length ? (
-              results.player_insights.map((insight, idx) => (
-                <div className="insight-card" key={idx}>
-                  <h3>{insight.username}</h3>
-                  <p><strong>Typing style:</strong> {insight.typing_style}</p>
-                  <p><strong>Personality:</strong> {insight.personality}</p>
-                  {insight.discovery && (
-                    <p><strong>Found:</strong> {insight.discovery}</p>
-                  )}
-                  {insight.notes && (
-                    <p className="insight-notes">{insight.notes}</p>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="insight-card placeholder">
-                <p>The AI kept its secrets this time. Play another round to feed it more intel.</p>
+
+        <div className="reveal-card insights">
+          <h3>Player dossiers</h3>
+          <div className="insights-list">
+            {results.player_insights?.length ? results.player_insights.map((insight, idx) => (
+              <div key={idx} className="insights-item">
+                <header>
+                  <span>{insight.username}</span>
+                </header>
+                <p><strong>Typing:</strong> {insight.typing_style}</p>
+                <p><strong>Persona:</strong> {insight.personality}</p>
+                {insight.discovery && <p><strong>Intel:</strong> {insight.discovery}</p>}
+                {insight.notes && <p>{insight.notes}</p>}
+              </div>
+            )) : (
+              <div className="insights-item placeholder">
+                <p>The AI kept quiet. Replay to feed it more data.</p>
               </div>
             )}
           </div>
         </div>
-        
-        <div className="play-again-section">
-          <button 
-            className="play-again-btn"
-            onClick={onPlayAgain}
-          >
-            Play Again 🔄
-          </button>
-          <button 
-            className="share-btn"
-            onClick={() => {
-              navigator.clipboard.writeText(`I just played AI Impostor and the AI fooled ${Math.round(results.ai_success_rate * 100)}% of us!`)
-              alert('Result copied to clipboard!')
-            }}
-          >
-            Share Results 📱
-          </button>
+
+        <div className="reveal-card scoreboard">
+          <h3>Scoreboard</h3>
+          <ul>
+            {scoreCards.map((entry) => (
+              <li key={entry.username}>
+                <span>{entry.username}</span>
+                <strong>{entry.score}</strong>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
-    </div>
+
+      <footer className="reveal-actions">
+        <button onClick={onPlayAgain}>Run it back</button>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(
+              `AI Impostor fooled ${Math.round(results.ai_success_rate * 100)}% of players. Can you beat it?`
+            )
+            alert('Result copied to clipboard!')
+          }}
+        >
+          Share the chaos
+        </button>
+      </footer>
+    </section>
   )
 }
 

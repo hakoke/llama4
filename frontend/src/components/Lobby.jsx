@@ -1,78 +1,100 @@
-import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import './Lobby.css'
 
 function Lobby({ gameId, playerId, username, players, gameMode, onStartGame, onBackToMenu }) {
   const isHost = players.length > 0 && players[0].id === playerId
-  const canStart = players.length >= 2 && players.length <= 8
-  
+  const canStart = players.length >= 3 && players.length <= 8
+
   return (
-    <div className="lobby-container">
-      <div className="lobby-content">
-        <div className="lobby-header-section">
-          <button className="back-btn" onClick={onBackToMenu}>
-            ← Back to Menu
-          </button>
-          <h1 className="lobby-title">Game Lobby</h1>
-          <div className="game-id-display">
-            <span>Game ID:</span>
-            <code>{gameId}</code>
-            <button 
-              className="copy-btn"
-              onClick={() => navigator.clipboard.writeText(gameId)}
-            >
-              📋 Copy
-            </button>
-          </div>
+    <div className="lobby-frame">
+      <div className="lobby-header">
+        <button className="ghost-btn" onClick={onBackToMenu}>⟵ Exit Lobby</button>
+        <div className="session-chip">
+          <span>Lobby</span>
+          <strong>{gameId}</strong>
+          <button onClick={() => navigator.clipboard.writeText(gameId)}>Copy</button>
         </div>
-        
-        <div className="lobby-sections">
-          <div className="players-section-full">
-            <h2>Players ({players.length})</h2>
-            <div className="players-list">
-              {players.map((player, idx) => (
-                <div key={player.id} className="player-card">
-                  <span className="player-number">{idx + 1}</span>
-                  <span className="player-name">{player.username}</span>
-                  {player.id === playerId && <span className="you-badge">YOU</span>}
-                  {idx === 0 && <span className="host-badge">HOST</span>}
-                </div>
-              ))}
-            </div>
-            {players.length < 2 && (
-              <p className="waiting-message">Waiting for {2 - players.length} more player(s)...</p>
-            )}
-            
-            <div className="lobby-info-box">
-              <h3>ℹ️ What Happens Next</h3>
-              <p>During the learning phase, the AI will ask you questions including your social media handles.</p>
-              <p>Be ready to share: Instagram, Twitter, TikTok, LinkedIn, etc.</p>
-            </div>
-          </div>
+      </div>
+
+      <div className="lobby-body">
+        <div className="lobby-col players">
+          <header className="lobby-section-header">
+            <h2>Connected Players</h2>
+            <span>{players.length}/8 online</span>
+          </header>
+          <ul className="player-grid">
+            <AnimatePresence>
+              {players.map((player, idx) => {
+                const isSelf = player.id === playerId
+                const isHostSlot = idx === 0
+                return (
+                  <motion.li
+                    key={player.id}
+                    className={`lobby-player ${isSelf ? 'you' : ''} ${isHostSlot ? 'host' : ''}`}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.35, ease: 'easeOut', delay: idx * 0.05 }}
+                  >
+                    <span className="player-index">{String(idx + 1).padStart(2, '0')}</span>
+                    <div className="player-meta">
+                      <span className="player-handle">{player.username}</span>
+                      <div className="player-tags">
+                        {isHostSlot && <span className="player-tag host">Host</span>}
+                        {isSelf && <span className="player-tag self">You</span>}
+                      </div>
+                    </div>
+                    <span className="player-pulse" />
+                  </motion.li>
+                )
+              })}
+            </AnimatePresence>
+          </ul>
+          {!canStart && (
+            <p className="lobby-hint">Need {Math.max(0, 3 - players.length)} more players to ignite.</p>
+          )}
         </div>
-        
-        {isHost && (
-          <div className="host-controls">
-            <button 
-              className="start-game-btn"
+
+        <div className="lobby-col briefing">
+          <section className="briefing-card">
+            <h3>Mission Brief</h3>
+            <p>
+              {isHost
+                ? 'You control the drop. Launch the learning phase once the squad is ready and the AI will interrogate everyone in parallel.'
+                : `${players[0]?.username || 'The host'} will arm the AI. When learning begins it hits your DM first—feed it vibe fuel.`}
+            </p>
+            <div className="mode-banner">
+              <span>{gameMode === 'group' ? 'Group Arena' : 'Private Rotation'}</span>
+              <p>
+                {gameMode === 'group'
+                  ? 'Single conversation. One player is silently hijacked by the AI. Expose the mimic before time dies.'
+                  : 'Sequential duels. Sometimes human, sometimes AI copying a teammate. Lock your guess after each round.'}
+              </p>
+            </div>
+          </section>
+
+          <section className="intel-card">
+            <h4>Incoming Intel</h4>
+            <ul>
+              <li>The AI pings first—drop socials, slang, typos. Let it believe it knows you.</li>
+              <li>Research phase: it crawls the open web, stitches dossiers, and plans its impersonation.</li>
+              <li>When the arena opens, trust nothing. Your typing tells are its weapons.</li>
+            </ul>
+          </section>
+
+          {isHost ? (
+            <motion.button
+              className="ignite-btn"
               onClick={onStartGame}
               disabled={!canStart}
+              whileHover={{ scale: canStart ? 1.03 : 1 }}
+              whileTap={{ scale: canStart ? 0.97 : 1 }}
             >
-              {canStart ? 'Start Game 🚀' : `Need ${2 - players.length} more players`}
-            </button>
-          </div>
-        )}
-        
-        {!isHost && (
-          <p className="waiting-for-host">Waiting for host to start the game...</p>
-        )}
-        
-        <div className="game-mode-info">
-          <h3>Mode: {gameMode === 'group' ? '👥 Group' : '💬 Private'}</h3>
-          <p>
-            {gameMode === 'group' 
-              ? 'Everyone will chat together. Find the AI impostor!'
-              : '1-on-1 rounds. Guess who you talked to each round!'}
-          </p>
+              {canStart ? 'Ignite Learning Phase' : 'Waiting for reinforcements'}
+            </motion.button>
+          ) : (
+            <p className="host-waiting">Host arming AI. Stay sharp.</p>
+          )}
         </div>
       </div>
     </div>

@@ -252,13 +252,15 @@ class GameService:
             ai_success_rate = 1 - (correct_guesses / len(votes)) if votes else 0
         
         # Generate AI's analysis of each player
-        analysis = await ai_impersonator.generate_game_analysis(game_id, players)
+        analysis_text = await ai_impersonator.generate_game_analysis(game_id, players)
+        player_insights = await ai_impersonator.extract_player_insights(game_id, players, analysis_text)
         
         result = GameResult(
             game_id=game_id,
             ai_success_rate=ai_success_rate,
             player_scores={p.id: p.score for p in players},
-            analysis=analysis
+            analysis=analysis_text,
+            player_insights=player_insights
         )
         
         self.db.add(result)

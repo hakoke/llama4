@@ -1,332 +1,224 @@
-.game-phase {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  animation: fadeIn 0.6s ease-out;
+.play-arena {
+  display: grid;
+  grid-template-columns: clamp(220px, 20vw, 260px) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 24px;
 }
 
-.game-header {
+.arena-header {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.arena-header span {
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.arena-header h2 {
+  font-size: clamp(22px, 3vw, 32px);
+  color: var(--text-primary);
+  max-width: 520px;
+}
+
+.arena-timer {
+  text-align: right;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.arena-timer strong {
+  display: block;
+  font-size: 24px;
+  color: var(--text-primary);
+}
+
+.arena-sidebar {
+  grid-row: 2;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.arena-sidebar h3 {
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.arena-sidebar ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.arena-sidebar li {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 30px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 16px;
-  margin-bottom: 20px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.game-info h1 {
-  font-size: 32px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #9D4EDD, #00F5FF);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 8px;
-}
-
-.game-objective {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.game-timer {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 24px;
-  background: rgba(255, 0, 110, 0.1);
+  padding: 12px 14px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 0, 110, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 14px;
 }
 
-.timer-icon {
-  font-size: 24px;
+.arena-sidebar li.you {
+  border-color: rgba(0, 245, 255, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 245, 255, 0.25);
 }
 
-.timer-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #FF006E;
-  font-family: 'Courier New', monospace;
-  min-width: 70px;
-  text-align: center;
+.arena-sidebar li small {
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
 }
 
-.participants-bar {
-  display: flex;
-  gap: 12px;
-  padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 16px;
-  margin-bottom: 20px;
-  overflow-x: auto;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.participants-bar::-webkit-scrollbar {
-  height: 6px;
-}
-
-.participants-bar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 3px;
-}
-
-.participants-bar::-webkit-scrollbar-thumb {
-  background: linear-gradient(90deg, #9D4EDD, #00F5FF);
-  border-radius: 3px;
-}
-
-.participant {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  min-width: 80px;
-  padding: 12px;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.participant:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.participant.you {
-  background: rgba(157, 78, 221, 0.1);
-  border: 1px solid rgba(157, 78, 221, 0.3);
-}
-
-.participant-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #9D4EDD, #00F5FF);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 20px;
-  box-shadow: 0 4px 15px rgba(157, 78, 221, 0.3);
-}
-
-.participant-name {
-  font-size: 13px;
-  font-weight: 500;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.chat-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 20px;
-  overflow: hidden;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 20px;
-}
-
-.messages-container {
-  flex: 1;
-  padding: 30px;
+.arena-chat {
+  grid-row: 2;
+  background: rgba(11, 15, 35, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  backdrop-filter: blur(20px);
+  padding: 24px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.messages-container::-webkit-scrollbar {
+.arena-chat::-webkit-scrollbar {
   width: 8px;
 }
 
-.messages-container::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.messages-container::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #9D4EDD, #00F5FF);
-  border-radius: 4px;
-}
-
-.chat-message {
-  display: flex;
-  flex-direction: column;
-  max-width: 70%;
-  animation: messageAppear 0.3s ease-out;
-}
-
-@keyframes messageAppear {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.chat-message.own {
-  align-self: flex-end;
-  align-items: flex-end;
-}
-
-.chat-message.other {
-  align-self: flex-start;
-  align-items: flex-start;
-}
-
-.chat-message.ai {
-  position: relative;
-}
-
-.chat-message.ai::after {
-  content: 'AI impostor';
-  position: absolute;
-  top: -18px;
-  right: 0;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  background: linear-gradient(120deg, rgba(255, 0, 110, 0.2), rgba(0, 245, 255, 0.15));
-  border: 1px solid rgba(255, 0, 110, 0.35);
-  color: #FF006E;
-  padding: 3px 10px;
+.arena-chat::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(255, 0, 110, 0.4), rgba(0, 245, 255, 0.45));
   border-radius: 999px;
-  box-shadow: 0 0 15px rgba(255, 0, 110, 0.25);
 }
 
-.message-sender-name {
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.message-content {
-  padding: 14px 18px;
-  border-radius: 16px;
-  word-wrap: break-word;
-  line-height: 1.5;
-  font-size: 16px;
+.arena-message {
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   position: relative;
 }
 
-.chat-message.own .message-content {
-  background: linear-gradient(135deg, #9D4EDD, #7B2CBF);
-  box-shadow: 0 4px 15px rgba(157, 78, 221, 0.3);
-  border-bottom-right-radius: 4px;
+.arena-message header {
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 8px;
 }
 
-.chat-message.other .message-content {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  border-bottom-left-radius: 4px;
+.arena-message p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-primary);
 }
 
-.chat-message.ai .message-content {
-  border: 1px solid rgba(255, 0, 110, 0.4);
-  box-shadow: 0 6px 20px rgba(255, 0, 110, 0.25);
-  background: rgba(255, 0, 110, 0.15);
-}
-
-.message-time {
+.arena-message time {
+  display: block;
+  margin-top: 8px;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.4);
-  margin-top: 4px;
 }
 
-.message-input-area {
-  padding: 20px 30px;
-  background: rgba(0, 0, 0, 0.3);
+.arena-message.own {
+  border-color: rgba(0, 245, 255, 0.4);
+  background: rgba(0, 245, 255, 0.08);
+  align-self: flex-end;
+}
+
+.arena-message.ai {
+  border-color: rgba(255, 0, 110, 0.35);
+  background: rgba(255, 0, 110, 0.08);
+  box-shadow: 0 12px 30px rgba(255, 0, 110, 0.2);
+}
+
+.arena-input {
+  grid-column: 2;
   display: flex;
   gap: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px;
+  backdrop-filter: blur(14px);
 }
 
-.message-input {
+.arena-input input {
   flex: 1;
-  padding: 14px 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  color: #fff;
-  font-size: 16px;
-  transition: all 0.3s ease;
-}
-
-.message-input:focus {
-  outline: none;
-  border-color: #9D4EDD;
-  box-shadow: 0 0 20px rgba(157, 78, 221, 0.3);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.message-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.send-button {
-  padding: 14px 32px;
-  background: linear-gradient(135deg, #9D4EDD, #00F5FF);
   border: none;
-  border-radius: 12px;
-  color: #fff;
-  font-weight: 600;
+  background: transparent;
+  color: var(--text-primary);
   font-size: 16px;
+}
+
+.arena-input input:focus {
+  outline: none;
+}
+
+.arena-input button {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 26px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.35), rgba(157, 78, 221, 0.45));
+  color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
+  transition: transform 0.35s var(--easing-snappy), box-shadow 0.35s var(--easing-snappy);
 }
 
-.send-button:not(:disabled):hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(157, 78, 221, 0.4);
-}
-
-.send-button:disabled {
+.arena-input button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.game-hint {
-  text-align: center;
-  padding: 16px;
-  color: rgba(255, 255, 255, 0.6);
+.arena-input button:not(:disabled):hover {
+  box-shadow: 0 15px 40px rgba(0, 245, 255, 0.35);
+}
+
+.arena-footer {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 14px;
-  font-style: italic;
-  background: rgba(255, 0, 110, 0.05);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 0, 110, 0.2);
+  color: rgba(255, 255, 255, 0.6);
 }
 
-@media (max-width: 768px) {
-  .game-header {
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
-  }
-  
-  .game-info h1 {
-    font-size: 24px;
-  }
-  
-  .participants-bar {
-    justify-content: flex-start;
-  }
-  
-  .chat-message {
-    max-width: 85%;
-  }
+.arena-footer span {
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 11px;
 }
 
+@media (max-width: 1024px) {
+  .play-arena {
+    grid-template-columns: 1fr;
+  }
+
+  .arena-sidebar {
+    order: -1;
+  }
+}

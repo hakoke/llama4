@@ -139,6 +139,7 @@ class GameResult(Base):
     
     player_scores = Column(JSON, nullable=True)
     round_results = Column(JSON, nullable=True)
+    player_insights = Column(JSON, nullable=True)
     
     analysis = Column(Text, nullable=True)  # AI's summary
     created_at = Column(DateTime, default=datetime.utcnow)
