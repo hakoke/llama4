@@ -285,6 +285,7 @@ async def websocket_endpoint(
                 db = next(get_db())
                 game_service = GameService(db)
                 game = game_service.get_game(game_id)
+                player = game_service.get_player(player_id)
                 
                 # Store message
                 await game_service.send_message(
@@ -301,8 +302,9 @@ async def websocket_endpoint(
                     "content": content,
                     "timestamp": message_data.get("timestamp")
                 }, game_id)
-                    
-                    # AI might respond if in group chat
+                
+                # AI might respond if in group chat
+                if game.mode == "group" and game.status == "playing":
                     if game.settings.get("ai_target_id"):
                         # AI responds as the target person
                         asyncio.create_task(
@@ -361,7 +363,7 @@ async def ai_respond_learning(game_id: str, player_id: str, user_message: str, d
         "type": "chat_message",
         "sender_id": "ai",
         "content": ai_response
-    }, game_session.game_id)
+    }, game_id)
 
 async def ai_respond_in_game(game_id: str, replying_to_player: str, message: str, db: Session):
     """AI responds during game phase (while impersonating)"""
