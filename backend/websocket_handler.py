@@ -7,6 +7,7 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, List[WebSocket]] = {}  # game_id -> [websockets]
         self.player_connections: Dict[str, WebSocket] = {}  # player_id -> websocket
+        self.connection_metadata: Dict[WebSocket, Dict] = {}
     
     async def connect(self, websocket: WebSocket, game_id: str, player_id: str):
         await websocket.accept()
@@ -16,6 +17,7 @@ class ConnectionManager:
         
         self.active_connections[game_id].append(websocket)
         self.player_connections[player_id] = websocket
+        self.connection_metadata[websocket] = {"game_id": game_id, "player_id": player_id}
     
     def disconnect(self, websocket: WebSocket, game_id: str, player_id: str):
         if game_id in self.active_connections:
@@ -24,6 +26,8 @@ class ConnectionManager:
         
         if player_id in self.player_connections:
             del self.player_connections[player_id]
+        if websocket in self.connection_metadata:
+            del self.connection_metadata[websocket]
     
     async def send_personal_message(self, message: dict, player_id: str):
         """Send message to specific player"""
@@ -34,7 +38,7 @@ class ConnectionManager:
             except:
                 pass
     
-    async def broadcast_to_game(self, message: dict, game_id: str, exclude_player: str = None):
+    async def broadcast_to_game(self, message: dict, game_id: str, exclude_player: str = None, private: bool = False):
         """Broadcast message to all players in a game"""
         if game_id in self.active_connections:
             disconnected = []

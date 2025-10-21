@@ -1,30 +1,27 @@
 import { useState, useEffect, useRef } from 'react'
 import './LearningPhase.css'
 
-function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId }) {
+function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId, deadline, duration }) {
   const [input, setInput] = useState('')
-  const [timeLeft, setTimeLeft] = useState(180) // 3 minutes
+  const [timeLeft, setTimeLeft] = useState(duration || 180)
   const messagesEndRef = useRef(null)
   const hasTriggeredResearch = useRef(false)
   
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 0) {
-          clearInterval(timer)
-          // Trigger research phase when timer ends
-          if (!hasTriggeredResearch.current && gameId) {
-            hasTriggeredResearch.current = true
-            triggerResearchPhase()
-          }
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    if (!deadline) return
+    const tick = () => {
+      const remaining = Math.max(0, Math.floor(deadline - Date.now() / 1000))
+      setTimeLeft(remaining)
+      if (remaining <= 0 && !hasTriggeredResearch.current) {
+        hasTriggeredResearch.current = true
+        triggerResearchPhase()
+      }
+    }
+    tick()
+    const timer = setInterval(tick, 1000)
     
     return () => clearInterval(timer)
-  }, [gameId])
+  }, [deadline, gameId])
   
   const triggerResearchPhase = async () => {
     try {
@@ -54,7 +51,8 @@ function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
   
-  const progress = ((180 - timeLeft) / 180) * 100
+  const totalTime = duration || 180
+  const progress = totalTime ? ((totalTime - timeLeft) / totalTime) * 100 : 0
   
   return (
     <div className="learning-phase">

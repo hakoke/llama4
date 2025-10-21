@@ -185,6 +185,26 @@
   align-items: flex-start;
 }
 
+.chat-message.ai {
+  position: relative;
+}
+
+.chat-message.ai::after {
+  content: 'AI impostor';
+  position: absolute;
+  top: -18px;
+  right: 0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: linear-gradient(120deg, rgba(255, 0, 110, 0.2), rgba(0, 245, 255, 0.15));
+  border: 1px solid rgba(255, 0, 110, 0.35);
+  color: #FF006E;
+  padding: 3px 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 15px rgba(255, 0, 110, 0.25);
+}
+
 .message-sender-name {
   font-size: 13px;
   font-weight: 600;
@@ -208,10 +228,16 @@
 }
 
 .chat-message.other .message-content {
-  background: rgba(0, 245, 255, 0.1);
-  border: 1px solid rgba(0, 245, 255, 0.3);
-  box-shadow: 0 4px 15px rgba(0, 245, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   border-bottom-left-radius: 4px;
+}
+
+.chat-message.ai .message-content {
+  border: 1px solid rgba(255, 0, 110, 0.4);
+  box-shadow: 0 6px 20px rgba(255, 0, 110, 0.25);
+  background: rgba(255, 0, 110, 0.15);
 }
 
 .message-time {

@@ -1,29 +1,26 @@
 import { useState, useEffect, useRef } from 'react'
 import './GamePhase.css'
 
-function GamePhase({ gameMode, messages, players, onSendMessage, playerId, gameId }) {
+function GamePhase({ gameMode, messages, players, onSendMessage, playerId, gameId, deadline, duration }) {
   const [input, setInput] = useState('')
-  const [timeLeft, setTimeLeft] = useState(gameMode === 'group' ? 300 : 120)
+  const [timeLeft, setTimeLeft] = useState(duration || (gameMode === 'group' ? 300 : 120))
   const messagesEndRef = useRef(null)
   const hasTriggeredVoting = useRef(false)
   
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 0) {
-          clearInterval(timer)
-          // Trigger voting phase when timer ends
-          if (!hasTriggeredVoting.current && gameId) {
-            hasTriggeredVoting.current = true
-            triggerVotingPhase()
-          }
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    if (!deadline) return
+    const tick = () => {
+      const remaining = Math.max(0, Math.floor(deadline - Date.now() / 1000))
+      setTimeLeft(remaining)
+      if (remaining <= 0 && !hasTriggeredVoting.current) {
+        hasTriggeredVoting.current = true
+        triggerVotingPhase()
+      }
+    }
+    tick()
+    const timer = setInterval(tick, 1000)
     return () => clearInterval(timer)
-  }, [gameId])
+  }, [deadline])
   
   const triggerVotingPhase = async () => {
     try {
@@ -99,16 +96,17 @@ function GamePhase({ gameMode, messages, players, onSendMessage, playerId, gameI
           {messages.map((msg, idx) => {
             const isOwn = msg.sender_id === playerId
             const sender = getPlayerName(msg.sender_id)
+            const isAI = msg.impersonated_by === 'ai'
             
             return (
               <div
                 key={idx}
-                className={`chat-message ${isOwn ? 'own' : 'other'}`}
+                className={`chat-message ${isOwn ? 'own' : 'other'} ${isAI ? 'ai' : ''}`}
               >
                 {!isOwn && <span className="message-sender-name">{sender}</span>}
-                <div className="message-content">
-                  {msg.content}
-                </div>
+        <div className="message-content">
+          {msg.content}
+        </div>
                 <span className="message-time">
                   {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                 </span>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import './GameApp.css'
 import Lobby from './components/Lobby'
@@ -12,7 +12,7 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 
 function GameApp() {
-  const [gameState, setGameState] = useState('menu') // menu, lobby, learning, researching, playing, voting, results
+  const [phase, setPhase] = useState('menu') // menu, lobby, learning, researching, playing, voting, results
   const [gameId, setGameId] = useState(null)
   const [playerId, setPlayerId] = useState(null)
   const [username, setUsername] = useState('')
@@ -20,11 +20,17 @@ function GameApp() {
   const [gameMode, setGameMode] = useState('group')
   
   const [messages, setMessages] = useState([])
+  const [phaseTimers, setPhaseTimers] = useState({
+    learning: { deadline: null, duration: 180 },
+    playing: { deadline: null, duration: 300 },
+    researching: { deadline: null, duration: null }
+  })
+  const [results, setResults] = useState(null)
   const [ws, setWs] = useState(null)
   
   // WebSocket connection
   useEffect(() => {
-    if (gameId && playerId && gameState !== 'menu') {
+    if (gameId && playerId && phase !== 'menu') {
       const websocket = new WebSocket(`${WS_URL}/ws/${gameId}/${playerId}`)
       
       websocket.onopen = () => {
@@ -46,7 +52,7 @@ function GameApp() {
         websocket.close()
       }
     }
-  }, [gameId, playerId, gameState])
+  }, [gameId, playerId, phase])
   
   const handleWebSocketMessage = (data) => {
     switch (data.type) {
@@ -55,7 +61,35 @@ function GameApp() {
         break
       
       case 'phase_change':
-        setGameState(data.phase)
+        setPhase(data.phase)
+        setMessages([])
+        if (data.phase === 'learning') {
+          setPhaseTimers(prev => ({
+            ...prev,
+            learning: {
+              deadline: data.deadline || null,
+              duration: data.duration || prev.learning.duration
+            }
+          }))
+        }
+        if (data.phase === 'playing') {
+          setPhaseTimers(prev => ({
+            ...prev,
+            playing: {
+              deadline: data.deadline || null,
+              duration: data.duration || prev.playing.duration
+            }
+          }))
+        }
+        if (data.phase === 'researching') {
+          setPhaseTimers(prev => ({
+            ...prev,
+            researching: {
+              deadline: data.deadline || null,
+              duration: data.duration || prev.researching.duration
+            }
+          }))
+        }
         break
       
       case 'chat_message':
@@ -63,20 +97,18 @@ function GameApp() {
           sender_id: data.sender_id,
           username: data.username,
           content: data.content,
-          timestamp: data.timestamp || new Date().toISOString()
-        }])
-        break
-      
-      case 'ai_message':
-        setMessages(prev => [...prev, {
-          sender_id: 'ai',
-          content: data.content,
-          timestamp: new Date().toISOString()
+          timestamp: data.timestamp || new Date().toISOString(),
+          phase: data.phase,
+          recipient_id: data.recipient_id,
+          impersonated_by: data.impersonated_by
         }])
         break
       
       case 'game_finished':
-        setGameState('results')
+        setPhase('results')
+        if (data.results) {
+          setResults(data.results)
+        }
         break
       
       default:
@@ -89,7 +121,7 @@ function GameApp() {
       const response = await axios.post(`${API_URL}/game/create`, { mode })
       setGameId(response.data.game_id)
       setGameMode(mode)
-      setGameState('lobby')
+      setPhase('lobby')
     } catch (error) {
       console.error('Error creating game:', error)
       alert('Failed to create game')
@@ -113,7 +145,7 @@ function GameApp() {
       setGameId(gameIdToJoin)
       setPlayerId(response.data.player_id)
       setUsername(playerName.trim())
-      setGameState('lobby')
+      setPhase('lobby')
       
       // Fetch game state
       const gameResponse = await axios.get(`${API_URL}/game/${gameIdToJoin}`)
@@ -148,7 +180,7 @@ function GameApp() {
       setPlayerId(joinResponse.data.player_id)
       setUsername(playerName.trim())
       setGameMode(mode)
-      setGameState('lobby')
+      setPhase('lobby')
       
       // Fetch game state
       const gameResponse = await axios.get(`${API_URL}/game/${newGameId}`)
@@ -160,12 +192,13 @@ function GameApp() {
   }
   
   const backToMenu = () => {
-    setGameState('menu')
+    setPhase('menu')
     setGameId(null)
     setPlayerId(null)
     setUsername('')
     setPlayers([])
     setMessages([])
+    setResults(null)
   }
   
   const sendMessage = (content) => {
@@ -205,7 +238,7 @@ function GameApp() {
   
   return (
     <div className="game-app">
-      {gameState === 'menu' && (
+      {phase === 'menu' && (
         <div className="menu-screen">
           <div className="menu-content">
             <h1 className="game-title">
@@ -246,7 +279,7 @@ function GameApp() {
         </div>
       )}
       
-      {gameState === 'lobby' && (
+      {phase === 'lobby' && (
         <Lobby
           gameId={gameId}
           playerId={playerId}
@@ -258,32 +291,36 @@ function GameApp() {
         />
       )}
       
-      {gameState === 'learning' && (
+      {phase === 'learning' && (
         <LearningPhase
-          messages={messages}
+          messages={messages.filter(msg => (msg.recipient_id === playerId) || (msg.sender_id === playerId))}
           onSendMessage={sendMessage}
           username={username}
           gameId={gameId}
+          deadline={phaseTimers.learning.deadline}
+          duration={phaseTimers.learning.duration}
           onBackToMenu={backToMenu}
         />
       )}
       
-      {gameState === 'researching' && (
+      {phase === 'researching' && (
         <ResearchPhase />
       )}
       
-      {gameState === 'playing' && (
+      {phase === 'playing' && (
         <GamePhase
           gameMode={gameMode}
-          messages={messages}
+          messages={messages.filter(msg => !msg.phase || msg.phase === 'playing')}
           players={players}
           onSendMessage={sendMessage}
           playerId={playerId}
           gameId={gameId}
+          deadline={phaseTimers.playing.deadline}
+          duration={phaseTimers.playing.duration}
         />
       )}
       
-      {gameState === 'voting' && (
+      {phase === 'voting' && (
         <VotingPhase
           players={players}
           gameMode={gameMode}
@@ -291,9 +328,10 @@ function GameApp() {
         />
       )}
       
-      {gameState === 'results' && (
+      {phase === 'results' && (
         <ResultsPhase
-          gameId={gameId}
+          results={results}
+          onPlayAgain={backToMenu}
         />
       )}
     </div>

@@ -1,36 +1,7 @@
-import { useState, useEffect } from 'react'
-import axios from 'axios'
 import './ResultsPhase.css'
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
-
-function ResultsPhase({ gameId }) {
-  const [results, setResults] = useState(null)
-  const [loading, setLoading] = useState(true)
-  
-  useEffect(() => {
-    // In a real implementation, this would come via WebSocket
-    // For now, fetch from API
-    const fetchResults = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/game/${gameId}`)
-        // Simulate results for now
-        setResults({
-          ai_success_rate: 0.67,
-          analysis: "The AI successfully fooled 67% of players! Here's what it learned about each of you...",
-          scores: {}
-        })
-        setLoading(false)
-      } catch (error) {
-        console.error('Error fetching results:', error)
-        setLoading(false)
-      }
-    }
-    
-    fetchResults()
-  }, [gameId])
-  
-  if (loading) {
+function ResultsPhase({ results, onPlayAgain }) {
+  if (!results) {
     return (
       <div className="results-loading">
         <div className="loading-spinner"></div>
@@ -65,28 +36,40 @@ function ResultsPhase({ gameId }) {
         
         <div className="analysis-section">
           <h2>AI's Analysis</h2>
-          <div className="analysis-text">
-            {results.analysis}
-          </div>
+        <div className="analysis-text">
+          {results.analysis}
+        </div>
         </div>
         
         <div className="player-insights">
           <h2>What the AI Learned</h2>
           <div className="insights-grid">
-            <div className="insight-card">
-              <h3>Player 1</h3>
-              <p>Typing style: Casual, uses lots of emojis 😊</p>
-              <p>Personality: Outgoing and friendly</p>
-              <p>Found on Instagram: 450 posts about travel</p>
-            </div>
-            {/* More player insights would be dynamically generated */}
+            {results.player_insights?.length ? (
+              results.player_insights.map((insight, idx) => (
+                <div className="insight-card" key={idx}>
+                  <h3>{insight.username}</h3>
+                  <p><strong>Typing style:</strong> {insight.typing_style}</p>
+                  <p><strong>Personality:</strong> {insight.personality}</p>
+                  {insight.discovery && (
+                    <p><strong>Found:</strong> {insight.discovery}</p>
+                  )}
+                  {insight.notes && (
+                    <p className="insight-notes">{insight.notes}</p>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="insight-card placeholder">
+                <p>The AI kept its secrets this time. Play another round to feed it more intel.</p>
+              </div>
+            )}
           </div>
         </div>
         
         <div className="play-again-section">
           <button 
             className="play-again-btn"
-            onClick={() => window.location.reload()}
+            onClick={onPlayAgain}
           >
             Play Again 🔄
           </button>

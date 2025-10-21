@@ -4,6 +4,7 @@ import random
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from database import (
     GameSession, Player, PersonalityProfile, GameMessage,
     GameRound, PlayerVote, GameResult, AIReasoning, UniversalKnowledge
@@ -74,9 +75,9 @@ class GameService:
             # Get their chat messages from learning phase
             messages = self.db.query(GameMessage).filter(
                 GameMessage.game_id == game_id,
-                GameMessage.sender_id == player.id,
-                GameMessage.phase == "learning"
-            ).all()
+                GameMessage.phase == "learning",
+                or_(GameMessage.sender_id == player.id, GameMessage.recipient_id == player.id)
+            ).order_by(GameMessage.timestamp.asc()).all()
             
             # Analyze typing patterns
             typing_analysis = await ai_impersonator.analyze_typing_patterns([m.content for m in messages])
@@ -225,7 +226,7 @@ class GameService:
         query = self.db.query(GameMessage).filter(GameMessage.game_id == game_id)
         if phase:
             query = query.filter(GameMessage.phase == phase)
-        return query.order_by(GameMessage.created_at.asc()).all()
+        return query.order_by(GameMessage.timestamp.asc()).all()
     
     async def finish_game(self, game_id: str) -> GameResult:
         """Calculate results and finish game"""
