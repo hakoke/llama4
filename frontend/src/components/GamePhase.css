@@ -75,6 +75,7 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(255, 255, 255, 0.02);
   font-size: 14px;
+  gap: 12px;
 }
 
 .arena-sidebar li.you {
@@ -82,11 +83,46 @@
   box-shadow: 0 10px 30px rgba(0, 245, 255, 0.25);
 }
 
-.arena-sidebar li small {
-  letter-spacing: 0.28em;
+.roster-alias {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.roster-alias span {
+  font-weight: 600;
+}
+
+.roster-alias small {
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.45);
+}
+
+.typing-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  opacity: 0.3;
+  transition: transform 0.2s var(--easing-snappy), opacity 0.2s;
+}
+
+.typing-dot.active {
+  opacity: 0.9;
+  transform: scale(1.2);
+  animation: typingDotPulse 0.8s ease-in-out infinite;
+}
+
+.typing-dot.active::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
 }
 
 .arena-chat {
@@ -124,6 +160,7 @@
 }
 
 .arena-message .alias-shell {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -135,6 +172,7 @@
   letter-spacing: 0.22em;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 4px 16px rgba(0, 245, 255, 0.12);
 }
 
 .arena-message .alias-shell .alias-badge {
@@ -147,6 +185,71 @@
   font-weight: 700;
   background: rgba(157, 78, 221, 0.75);
   color: var(--text-primary);
+}
+
+.arena-message.typing .alias-shell::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  opacity: 0.4;
+  animation: aliasHalo 1.4s ease-in-out infinite;
+}
+
+.arena-message.typing::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 24px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  animation: messageHalo 1.4s ease-in-out infinite;
+}
+
+@keyframes typingPulse {
+  0%, 100% {
+    transform: translateX(-50%) scale(0.85);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes typingDotPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+}
+
+@keyframes aliasHalo {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(0.85);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes messageHalo {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .arena-message p {

@@ -1,6 +1,16 @@
 import GamePhase from './GamePhase'
 
-function ReactStage({ messages, players, aliases, onSendMessage, playerId, deadline }) {
+function ReactStage({ 
+  messages, 
+  players, 
+  aliases, 
+  onSendMessage, 
+  playerId, 
+  deadline, 
+  typingIndicators, 
+  onTyping, 
+  reducedMotion 
+}) {
   return (
     <GamePhase
       stage="react"
@@ -15,6 +25,9 @@ function ReactStage({ messages, players, aliases, onSendMessage, playerId, deadl
       headerTag="Aftershock"
       headerTitle="React to the reveals. Compare notes. Set the final trap."
       tipMessage="Call out contradictions, reference specific answers, and watch who stalls when pressed."
+      typingIndicators={typingIndicators}
+      onTyping={onTyping}
+      reducedMotion={reducedMotion}
     />
   )
 }

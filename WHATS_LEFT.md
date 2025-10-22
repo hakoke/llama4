@@ -54,7 +54,37 @@
 
 ## 🚧 WHAT'S LEFT
 
-### Frontend (Needs to be Built)
+### 🔄 Active Implementation Checklist (Updated)
+
+1. **Backend – Group Arena Flow**
+   - Typing halos: include alias badge/color in WebSocket typing payloads and render halo pulses per alias on the frontend.
+   - Server-timed phases: replace client `sleep` reliance with authoritative timers that block late submissions and auto-advance if the client stalls.
+   - Mind Game reveal payload: broadcast alias, latency, and submission order for the animated reveal stack, plus a summary highlighting the AI answers.
+   - Latency tracking per message: capture human typing start/stop to populate `GameMessage.latency_ms` for AI mimicry.
+
+2. **Frontend – Mind Games & React UI**
+   - Typing halos & indicators: animate alias halos in chat and display synchronized "typing..." badges.
+   - Answer submission states: show sending/delivered status, lock editing after timeout, and surface deadline miss errors.
+   - Reveal experience: add flip animations, audio cues, latency badges, AI answer highlights, and screen reader narration.
+   - Accessibility & animations: implement reduced-motion mode, focus management, keyboard shortcuts, contrast validation, and ARIA live regions.
+   - Audio cues: integrate timer warnings, reveal stingers, ambient loops, and volume controls.
+
+3. **AI Layer**
+   - Memory retrieval: wire up vector embedding storage and retrieval so Qwen conditions on historic facts.
+   - Latency modeling: delay responses based on per-alias latency observations and log actual delays for calibration.
+   - Group blend prompt: validate `group_blend` against the memory pipeline and enforce persona diversity.
+   - Post-game analysis: weave mind-game answers, latency mimicry, and cross-game insights into `universal_knowledge` updates.
+
+4. **Results Screen**
+   - Display mind-game reveals with alias attribution, AI deception metrics, latency stats, and link into the updated "brutally honest" AI profile.
+
+5. **Miscellaneous Polish**
+   - Echo typing halos in the React stage after the reveal chat.
+   - Ensure alias profiles expose accessible fallback text (badges, ARIA labels).
+   - Add optional haptic hooks for supported mobile devices.
+   - Enforce the 3-5-2 minute timeline consistently across client and server.
+
+### Frontend (Legacy Checklist)
 - ⏳ Game lobby UI
 - ⏳ Learning phase chat interface
 - ⏳ Loading/research screen with animations
@@ -65,46 +95,6 @@
 - ⏳ Animations & timers
 - ⏳ WebSocket integration
 - ⏳ Responsive design
-
-### Frontend Tasks (Detailed)
-1. **Lobby Screen**
-   - Create game button
-   - Join game input
-   - Player list
-   - Social handles form
-   - Start game button (host)
-
-2. **Learning Phase**
-   - 3-minute countdown timer
-   - Chat interface with AI
-   - Real-time messages
-   - Typing indicators
-   - Progress indicator
-
-3. **Research Phase**
-   - Cool loading animation
-   - "AI is researching you" message
-   - Progress bars/spinner
-   - Fun facts display
-
-4. **Game Phase**
-   - Group mode: multi-user chat
-   - Private mode: 1-on-1 rotation
-   - Round timers
-   - Message bubbles
-   - Player indicators
-
-5. **Voting**
-   - Player selection UI
-   - Submit vote button
-   - Waiting for others indicator
-
-6. **Results**
-   - Dramatic reveal animation
-   - AI success rate display
-   - Per-player analysis
-   - Scores/leaderboard
-   - Play again button
 
 ### Backend Polish (Minor)
 - ⏳ Add EC2 model URL when ready

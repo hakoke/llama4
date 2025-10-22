@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import './GamePhase.css'
 
 function GamePhase({
   stage = 'playing',
   gameMode = 'group',
-  messages,
+  messages = [],
   players,
   onSendMessage,
   playerId,
@@ -16,17 +16,49 @@ function GamePhase({
   onTimerExpired,
   headerTag,
   headerTitle,
-  tipMessage
+  tipMessage,
+  typingIndicators = {},
+  submissionStatus = {},
+  reducedMotion = false,
+  onTyping
 }) {
   const [input, setInput] = useState('')
   const [timeLeft, setTimeLeft] = useState(duration)
+  const [isTyping, setIsTyping] = useState(false)
 
   useEffect(() => {
     if (!deadline) return
     let triggered = false
+    let warningTriggered = false
+    let criticalTriggered = false
+    
     const tick = () => {
       const remaining = Math.max(0, Math.floor(deadline - Date.now() / 1000))
       setTimeLeft(remaining)
+      
+      // Timer warnings
+      if (remaining === 10 && !warningTriggered) {
+        warningTriggered = true
+        // Audio warning at 10 seconds
+        if (window.audioController) {
+          window.audioController.playTimerWarning()
+        }
+        if (window.hapticController && window.hapticController.isAvailable()) {
+          window.hapticController.timerWarning()
+        }
+      }
+      
+      if (remaining <= 3 && remaining > 0 && !criticalTriggered) {
+        criticalTriggered = true
+        // Critical warning at 3 seconds
+        if (window.audioController) {
+          window.audioController.playTimerCritical()
+        }
+        if (window.hapticController && window.hapticController.isAvailable()) {
+          window.hapticController.timerCritical()
+        }
+      }
+      
       if (remaining <= 0 && !triggered) {
         triggered = true
         onTimerExpired?.()
@@ -37,10 +69,32 @@ function GamePhase({
     return () => clearInterval(timer)
   }, [deadline, onTimerExpired])
 
+  useEffect(() => {
+    if (input.trim() && !isTyping) {
+      setIsTyping(true)
+      onTyping?.(true)
+    }
+    if (!input.trim() && isTyping) {
+      setIsTyping(false)
+      onTyping?.(false)
+    }
+    const debounce = setTimeout(() => {
+      if (isTyping) {
+        setIsTyping(false)
+        onTyping?.(false)
+      }
+    }, 1500)
+    return () => clearTimeout(debounce)
+  }, [input, isTyping, onTyping])
+
   const handleSend = () => {
     if (input.trim()) {
       onSendMessage(input)
       setInput('')
+      if (isTyping) {
+        setIsTyping(false)
+        onTyping?.(false)
+      }
     }
   }
 
@@ -49,6 +103,12 @@ function GamePhase({
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
+
+  const disableInput = useMemo(() => timeLeft <= 0, [timeLeft])
+
+  const orderedMessages = useMemo(() => {
+    return [...messages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+  }, [messages])
 
   const resolvedAlias = (msg) => {
     if (msg.alias) return msg.alias
@@ -80,8 +140,15 @@ function GamePhase({
         <ul>
           {players.map((player) => (
             <li key={player.id} className={player.id === playerId ? 'you' : ''}>
-              <span>{player.username}</span>
-              {player.id === playerId && <small>you</small>}
+              <div className="roster-alias">
+                <span>{player.username}</span>
+                <small>{aliases?.[player.id]?.alias || player.alias || 'Alias pending'}</small>
+              </div>
+              <div
+                className={`typing-dot ${typingIndicators[player.id]?.isTyping ? 'active' : ''}`}
+                aria-hidden="true"
+                style={{ borderColor: aliases?.[player.id]?.color }}
+              />
             </li>
           ))}
         </ul>
@@ -89,19 +156,21 @@ function GamePhase({
 
       <div className="arena-chat">
         <AnimatePresence initial={false}>
-          {messages.map((msg, idx) => {
+          {orderedMessages.map((msg, idx) => {
             const isOwn = msg.sender_id === playerId
             const isAI = msg.impersonated_by === 'ai'
             const aliasColor = msg.alias_color || aliases?.[msg.sender_id]?.color
             const aliasBadge = msg.alias_badge || aliases?.[msg.sender_id]?.badge || '?' 
+            const typingHalo = typingIndicators[msg.sender_id]?.isTyping
             return (
               <motion.div
                 key={`${idx}-${msg.timestamp}`}
-                className={`arena-message ${isOwn ? 'own' : ''} ${isAI ? 'ai' : ''}`}
-                initial={{ opacity: 0, y: 12 }}
+                className={`arena-message ${isOwn ? 'own' : ''} ${isAI ? 'ai' : ''} ${typingHalo ? 'typing' : ''}`}
+                initial={{ opacity: 0, y: reducedMotion ? 0 : 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.25, ease: 'easeOut' }}
+                exit={{ opacity: 0, y: reducedMotion ? 0 : -12 }}
+                transition={{ duration: reducedMotion ? 0 : 0.25, ease: 'easeOut' }}
+                role="listitem"
               >
                 {!isOwn && (
                   <header>
@@ -128,14 +197,16 @@ function GamePhase({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder={gameMode === 'group' ? 'Accuse, joke, bait... the AI is listening.' : 'Trust your gut? Call their bluff?'}
+          aria-disabled={disableInput}
+          disabled={disableInput}
         />
         <motion.button
           onClick={handleSend}
-          disabled={!input.trim()}
-          whileHover={{ scale: input.trim() ? 1.03 : 1 }}
-          whileTap={{ scale: input.trim() ? 0.96 : 1 }}
+          disabled={!input.trim() || disableInput}
+          whileHover={{ scale: input.trim() && !disableInput ? 1.03 : 1 }}
+          whileTap={{ scale: input.trim() && !disableInput ? 0.96 : 1 }}
         >
-          Send
+          {disableInput ? 'Locked' : 'Send'}
         </motion.button>
       </div>
 

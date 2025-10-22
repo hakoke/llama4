@@ -19,12 +19,22 @@ function VotingPhase({ players, gameMode, onSubmitVote }) {
 
   const { title, subtitle } = questionCopy[gameMode] || questionCopy.group
 
+  const handlePlayerSelect = (playerId) => {
+    setSelectedPlayer(playerId)
+    if (window.hapticController && window.hapticController.isAvailable()) {
+      window.hapticController.tap()
+    }
+    if (window.audioController) {
+      window.audioController.playTone(440, 0.08, 'sine')
+    }
+  }
+
   const playerCards = useMemo(() => (
     players.map((player, idx) => (
       <motion.button
         key={player.id}
         className={`ballot-card ${selectedPlayer === player.id ? 'selected' : ''}`}
-        onClick={() => setSelectedPlayer(player.id)}
+        onClick={() => handlePlayerSelect(player.id)}
         whileHover={{ translateY: -6 }}
         whileTap={{ scale: 0.97 }}
         transition={{ delay: idx * 0.05 }}
@@ -43,6 +53,13 @@ function VotingPhase({ players, gameMode, onSubmitVote }) {
       : { guessed_partner_id: selectedPlayer }
     onSubmitVote(voteData)
     setSubmitted(true)
+    
+    if (window.audioController) {
+      window.audioController.playVoteLocked()
+    }
+    if (window.hapticController && window.hapticController.isAvailable()) {
+      window.hapticController.success()
+    }
   }
 
   return (

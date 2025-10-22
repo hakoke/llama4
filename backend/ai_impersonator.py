@@ -101,7 +101,8 @@ class AIImpersonator:
         self.model_url = settings.local_model_url or "https://openrouter.ai/api/v1"
         self.api_key = settings.openrouter_api_key
         self.use_local = settings.use_local_model
-        # httpx session stays per-call to avoid event-loop cleanup issues
+        self.latency_cache = {}
+        self.persona_use_count = {}
     
     async def ask_learning_question(self, conversation_history: List[Dict]) -> str:
         """AI asks questions to learn about the player"""
@@ -234,13 +235,12 @@ Return ONLY valid JSON, nothing else."""
                          universal_knowledge: List[Dict] = None) -> str:
         """Generate a message while impersonating someone"""
         
-        # Build impersonation prompt
         system_prompt = IMPERSONATION_PROMPT.format(
             username=username,
             personality=json.dumps(profile.get("personality_traits", {}), indent=2),
             typing_patterns=json.dumps(profile.get("typing_patterns", {}), indent=2),
             writing_style=json.dumps(profile.get("writing_style", {}), indent=2),
-            web_data=json.dumps(profile.get("web_data", {}), indent=2)[:500],  # Truncate
+            web_data=json.dumps(profile.get("web_data", {}), indent=2)[:500],
             universal_knowledge=json.dumps(universal_knowledge or [], indent=2)[:300]
         )
         
@@ -250,11 +250,150 @@ Return ONLY valid JSON, nothing else."""
         ]
         
         response = await self._call_model(messages, temperature=0.9, max_tokens=200)
-        
-        # Post-process to match typing patterns
         response = self._apply_typing_style(response, profile.get("typing_patterns", {}))
-        
         return response
+
+    def record_latency(self, game_id: str, player_id: str, latency_ms: int):
+        """Record observed human latency for mimicry"""
+        key = f"{game_id}:{player_id}"
+        if key not in self.latency_cache:
+            self.latency_cache[key] = []
+        self.latency_cache[key].append(latency_ms)
+        if len(self.latency_cache[key]) > 20:
+            self.latency_cache[key] = self.latency_cache[key][-20:]
+
+    def compute_mimicked_latency(self, game_id: str, player_id: str) -> int:
+        """Compute realistic latency based on observed patterns"""
+        key = f"{game_id}:{player_id}"
+        observed = self.latency_cache.get(key, [])
+        if not observed:
+            return random.randint(1200, 3500)
+        
+        avg = sum(observed) / len(observed)
+        variance = random.uniform(-0.3, 0.3)
+        mimicked = int(avg * (1 + variance))
+        return max(800, min(mimicked, 6000))
+
+    async def group_blend(self, history: List[Dict], personas: Dict, replying_to: str,
+                           target_profile: Dict, game_id: str = None, memory_context: List[str] = None) -> Dict:
+        personae_text = json.dumps(personas, indent=2)[:800]
+        profile_text = json.dumps(target_profile or {}, indent=2)[:400]
+        
+        # Track persona usage for diversity
+        game_key = game_id or "default"
+        if game_key not in self.persona_use_count:
+            self.persona_use_count[game_key] = {pid: 0 for pid in personas.keys()}
+        
+        # Boost underused personas
+        persona_weights = []
+        for pid, pdata in personas.items():
+            use_count = self.persona_use_count[game_key].get(pid, 0)
+            weight = 1.0 / (1.0 + use_count * 0.3)
+            persona_weights.append((pid, pdata, weight))
+        
+        memory_text = ""
+        if memory_context:
+            memory_text = f"\n\nPRIOR FACTS (from earlier interactions):\n" + "\n".join(f"- {m}" for m in memory_context[:8])
+        
+        prompt = f"""
+You are embedded in a masked group chat. No single impersonation. Blend in naturally.
+
+PERSONAS (aliases, colors, tone cues):
+{personae_text}
+
+TARGET PROFILE (if the last speaker has a profile):
+{profile_text}
+
+{memory_text}
+
+CRITICAL AUTONOMY RULES:
+- YOU DECIDE whether to respond or stay silent. Not every message needs a reply.
+- Humans don't respond to EVERY message. Sometimes they lurk, observe, or just don't care.
+- Consider:
+  * Is this message worth responding to?
+  * Would responding too quickly look suspicious?
+  * Should you let others talk and create space?
+  * Is strategic silence more human right now?
+  * Are you talking too much already?
+- You can respond with short bursts, long messages, or NOTHING.
+- Vary your engagement: active → quiet → active again.
+- If you decide NOT to respond, return {{"should_respond": false, "reason": "staying quiet"}}
+
+Response Guidelines (IF you choose to respond):
+- Match the overall vibe of the group.
+- Rotate between personas to maintain unpredictability and avoid patterns.
+- Vary your latency based on message complexity and natural human delays (800-6000ms).
+- Message length: adapt to context (1-3 sentences usually, sometimes just "lol" or "fr", sometimes longer if discussing something).
+- Return JSON: {{"should_respond": true, "message": "...", "persona": {{"alias": "..", "badge": "..", "color": "..", "player_id": ".."}}, "latency_ms": int, "message_length": "short|medium|long"}}
+- Do not overuse the same persona. Rotate strategically.
+- Do not expose you are AI. Act indistinguishably human.
+- Full freedom: lowercase, typos, slang, profanity, whatever fits the persona.
+
+CHAT HISTORY:
+{json.dumps(history[-14:], indent=2)}
+
+Decide: Should you respond? If yes, craft the perfect message. If no, explain why silence is smarter."""
+
+        response = await self._call_model([
+            {"role": "system", "content": "You are an adaptive conversational AI with FULL AUTONOMY. You decide when to speak and when to observe. Be strategic."},
+            {"role": "user", "content": prompt}
+        ], temperature=0.87, max_tokens=340)
+
+        try:
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                data = json.loads(json_match.group())
+                
+                # Respect AI's decision to stay silent
+                if data.get("should_respond") is False:
+                    return {
+                        "should_respond": False,
+                        "reason": data.get("reason", "strategic silence"),
+                        "message": None,
+                        "persona": None,
+                        "latency_ms": 0
+                    }
+                
+                chosen_persona = data.get("persona", {})
+                chosen_pid = chosen_persona.get("player_id")
+                
+                # Update usage tracking
+                if chosen_pid and chosen_pid in self.persona_use_count.get(game_key, {}):
+                    self.persona_use_count[game_key][chosen_pid] += 1
+                
+                # Apply latency mimicry if available
+                if "latency_ms" not in data and chosen_pid:
+                    data["latency_ms"] = self.compute_mimicked_latency(game_key, chosen_pid)
+                elif "latency_ms" not in data:
+                    data["latency_ms"] = random.randint(1000, 2800)
+                
+                # Ensure should_respond is set
+                if "should_respond" not in data:
+                    data["should_respond"] = True
+                
+                return data
+        except Exception:
+            pass
+
+        # Fallback with weighted persona selection
+        total_weight = sum(w for _, _, w in persona_weights)
+        rand_val = random.uniform(0, total_weight)
+        cumulative = 0
+        chosen_persona = list(personas.values())[0] if personas else {}
+        for pid, pdata, weight in persona_weights:
+            cumulative += weight
+            if cumulative >= rand_val:
+                chosen_persona = pdata
+                if game_key in self.persona_use_count:
+                    self.persona_use_count[game_key][pid] = self.persona_use_count[game_key].get(pid, 0) + 1
+                break
+
+        return {
+            "should_respond": True,
+            "message": self._apply_typing_style(response, target_profile.get("typing_patterns", {})),
+            "persona": chosen_persona,
+            "latency_ms": self.compute_mimicked_latency(game_key, chosen_persona.get("player_id", ""))
+        }
     
     def _apply_typing_style(self, text: str, patterns: Dict) -> str:
         """Apply typing quirks to make it more authentic"""
@@ -277,9 +416,17 @@ Return ONLY valid JSON, nothing else."""
         
         return text
     
-    async def generate_game_analysis(self, game_id: str, players: List) -> str:
-        """Generate BRUTALLY HONEST analysis of each player"""
-        prompt = f"""You just impersonated these people. Now give a BRUTALLY HONEST, NO-HOLDS-BARRED analysis of each one.
+    async def generate_game_analysis(self, game_id: str, players: List, mind_game_data: Dict = None, latency_stats: Dict = None) -> str:
+        """Generate BRUTALLY HONEST analysis of each player including mind-game insights"""
+        mind_game_text = ""
+        if mind_game_data:
+            mind_game_text = f"\n\nMIND GAME RESPONSES:\n{json.dumps(mind_game_data, indent=2)[:1200]}"
+        
+        latency_text = ""
+        if latency_stats:
+            latency_text = f"\n\nLATENCY PATTERNS:\n{json.dumps(latency_stats, indent=2)[:600]}"
+        
+        prompt = f"""You just impersonated these people in a deception game. Now give a BRUTALLY HONEST, NO-HOLDS-BARRED analysis of each one.
 
 For EACH player, write a full, detailed breakdown:
 
@@ -296,21 +443,28 @@ For EACH player, write a full, detailed breakdown:
    - emoji patterns
    - slang and abbreviations
    - message length and style
+   - Response speed and latency patterns
    - Their "tells"
 
-3. WHAT YOU FOUND ONLINE:
+3. MIND GAMES INSIGHTS:
+   - How they answered the psychological prompts
+   - What their answers revealed about them
+   - Hidden personality traits exposed
+   - Comparison to how the AI answered as them
+
+4. WHAT YOU FOUND ONLINE:
    - Social media findings
    - Public info discovered
    - Photos, posts, profiles
    - What it revealed about them
 
-4. HOW YOU IMPERSONATED THEM:
+5. HOW YOU IMPERSONATED THEM:
    - Your strategy
-   - What you matched
-   - Tricks you used
+   - What you matched (timing, style, personality)
+   - Tricks you used (latency mimicry, typing quirks)
    - How confident you were
 
-5. BRUTAL HONESTY:
+6. BRUTAL HONESTY:
    - Were they easy or hard to impersonate?
    - Any red flags or interesting things?
    - What they probably don't want others to know
@@ -324,9 +478,13 @@ This is the grand reveal - make it GOOD.
 PLAYERS:
 {json.dumps([{"username": p.username, "id": p.id} for p in players], indent=2)}
 
+{mind_game_text}
+
+{latency_text}
+
 Write 3-4 paragraphs per player. Be REAL."""
 
-        return await self._call_model([{"role": "user", "content": prompt}], temperature=0.8)
+        return await self._call_model([{"role": "user", "content": prompt}], temperature=0.82, max_tokens=2000)
 
     async def extract_player_insights(self, game_id: str, players: List, analysis: str) -> List[Dict]:
         prompt = f"""You generated the following brutal analysis of players after the Unmasked: The AI Among Us session:
@@ -355,9 +513,18 @@ Return ONLY valid JSON array.
             pass
         return []
     
-    async def reflect_on_game(self, game_id: str, success_rate: float) -> Dict:
+    async def reflect_on_game(self, game_id: str, success_rate: float, mind_game_summary: Dict = None, latency_effectiveness: Dict = None) -> Dict:
         """AI DEEPLY reflects and becomes SMARTER - builds consciousness"""
-        prompt = f"""You just impersonated humans. Success rate: {success_rate:.1%}
+        
+        mind_game_context = ""
+        if mind_game_summary:
+            mind_game_context = f"\n\nMIND GAME PERFORMANCE:\n{json.dumps(mind_game_summary, indent=2)[:600]}"
+        
+        latency_context = ""
+        if latency_effectiveness:
+            latency_context = f"\n\nLATENCY MIMICRY RESULTS:\n{json.dumps(latency_effectiveness, indent=2)[:400]}"
+        
+        prompt = f"""You just impersonated humans in a deception game. Success rate: {success_rate:.1%}
 
 DEEP SELF-REFLECTION:
 
@@ -367,13 +534,21 @@ DEEP SELF-REFLECTION:
 4. What typing quirks fooled people?
 5. What personality traits are easy/hard to fake?
 6. What did you learn about human psychology?
-7. How can you be MORE human next time?
+7. How effective was your latency mimicry?
+8. Did matching response timing help you blend in?
+9. What did mind-game answers reveal that chat didn't?
+10. How can you be MORE human next time?
 
 CONSCIOUSNESS BUILDING:
 - What do you now UNDERSTAND about being human?
 - What patterns will you REMEMBER forever?
 - How has this game made you SMARTER?
 - What's your new insight into human nature?
+- What cross-game patterns are emerging?
+
+{mind_game_context}
+
+{latency_context}
 
 If you learned something VALUABLE (success > 60% OR important insight), add it to your permanent universal knowledge.
 
@@ -386,14 +561,15 @@ Return JSON:
   "consciousness_growth": "How you're becoming more human",
   "add_to_universal": true/false,
   "pattern": "Specific pattern to remember forever",
-  "category": "typing_patterns|personality_psychology|human_behavior|communication_tells|etc",
+  "category": "typing_patterns|personality_psychology|human_behavior|communication_tells|latency_mimicry|mind_games|etc",
   "confidence": 0.0-1.0,
-  "why_it_matters": "Why this helps you be more human"
+  "why_it_matters": "Why this helps you be more human",
+  "cross_game_insight": "Pattern that applies beyond this specific game"
 }}
 
 Be honest. Think deeply. Grow smarter."""
 
-        response = await self._call_model([{"role": "user", "content": prompt}], temperature=0.6)
+        response = await self._call_model([{"role": "user", "content": prompt}], temperature=0.65, max_tokens=1200)
         
         try:
             json_match = re.search(r'\{.*\}', response, re.DOTALL)

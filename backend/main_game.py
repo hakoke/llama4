@@ -2,7 +2,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPExcept
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 import uuid
 import asyncio
 import json
@@ -10,7 +10,7 @@ import random
 import time
 from datetime import datetime, timedelta
 
-from database import init_db, get_db, Player, PlayerVote, SessionLocal
+from database import init_db, get_db, Player, PlayerVote, SessionLocal, UniversalKnowledge
 from game_service import GameService, GROUP_CHAT_DURATION, MIND_GAMES_TOTAL_DURATION, GROUP_REACT_DURATION
 from websocket_handler import manager
 from ai_impersonator import ai_impersonator
@@ -137,12 +137,64 @@ async def update_handles(
     return {"status": "updated", "handles": handles}
 
 class PhaseScheduler:
-    """Simple scheduler to track when phases should auto-trigger."""
+    """Simple scheduler to track when phases should auto-trigger and timing metadata."""
+
     def __init__(self):
         self.learning_deadlines: Dict[str, float] = {}
         self.play_deadlines: Dict[str, float] = {}
+        self.stage_deadlines: Dict[str, Dict[str, float]] = {}
         self.mind_game_start_times: Dict[str, Dict[int, float]] = {}
+        self.mind_game_deadlines: Dict[Tuple[str, int], float] = {}
         self.player_last_message: Dict[str, float] = {}
+        self.typing_sessions: Dict[Tuple[str, str], float] = {}
+
+    def record_stage_deadline(self, game_id: str, stage: str, deadline: Optional[float]):
+        if deadline is None:
+            self.stage_deadlines.get(game_id, {}).pop(stage, None)
+            return
+        self.stage_deadlines.setdefault(game_id, {})[stage] = deadline
+
+    def get_stage_deadline(self, game_id: str, stage: str) -> Optional[float]:
+        return self.stage_deadlines.get(game_id, {}).get(stage)
+
+    def stage_expired(self, game_id: str, stage: str, now: Optional[float] = None) -> bool:
+        deadline = self.get_stage_deadline(game_id, stage)
+        if not deadline:
+            return False
+        now = now or time.time()
+        return now > deadline
+
+    def record_mind_game_deadline(self, game_id: str, mind_game_id: int, deadline: float):
+        self.mind_game_deadlines[(game_id, mind_game_id)] = deadline
+
+    def pop_mind_game_deadline(self, game_id: str, mind_game_id: int) -> Optional[float]:
+        return self.mind_game_deadlines.pop((game_id, mind_game_id), None)
+
+    def get_mind_game_deadline(self, game_id: str, mind_game_id: int) -> Optional[float]:
+        return self.mind_game_deadlines.get((game_id, mind_game_id))
+
+    def mark_typing_start(self, game_id: str, player_id: str):
+        key = (game_id, player_id)
+        if key not in self.typing_sessions:
+            self.typing_sessions[key] = time.perf_counter()
+
+    def consume_typing_latency(self, game_id: str, player_id: str) -> Optional[int]:
+        start = self.typing_sessions.pop((game_id, player_id), None)
+        if start is None:
+            return None
+        return int(max(0.0, (time.perf_counter() - start) * 1000))
+
+    def clear_game(self, game_id: str):
+        self.learning_deadlines.pop(game_id, None)
+        self.play_deadlines.pop(game_id, None)
+        self.stage_deadlines.pop(game_id, None)
+        self.mind_game_start_times.pop(game_id, None)
+        keys_to_remove = [key for key in self.mind_game_deadlines if key[0] == game_id]
+        for key in keys_to_remove:
+            self.mind_game_deadlines.pop(key, None)
+        typing_keys = [key for key in self.typing_sessions if key[0] == game_id]
+        for key in typing_keys:
+            self.typing_sessions.pop(key, None)
 
 phase_scheduler = PhaseScheduler()
 
@@ -170,7 +222,9 @@ async def schedule_play_end(game_id: str, duration: int = 300, deadline: Optiona
 
 
 async def schedule_group_flow(game_id: str, game_service: GameService, timeline: Optional[Dict]):
+    """Orchestrate group arena flow: chat → mind games → react → voting"""
     try:
+        # Wait for initial chat to finish
         await asyncio.sleep(GROUP_CHAT_DURATION)
         await begin_mind_games(game_id, game_service)
     except Exception as exc:
@@ -178,12 +232,14 @@ async def schedule_group_flow(game_id: str, game_service: GameService, timeline:
         return
 
     try:
+        # Wait for mind games to finish
         await asyncio.sleep(MIND_GAMES_TOTAL_DURATION)
         await begin_group_react(game_id, game_service)
     except Exception as exc:
         print(f"Group react launch error for {game_id}: {exc}")
 
     try:
+        # Wait for react stage to finish
         await asyncio.sleep(GROUP_REACT_DURATION)
         await start_voting_phase(game_id)
     except Exception as exc:
@@ -192,6 +248,7 @@ async def schedule_group_flow(game_id: str, game_service: GameService, timeline:
 
 async def begin_mind_games(game_id: str, game_service: GameService):
     game_service.set_group_stage(game_id, "mind_games")
+    phase_scheduler.record_stage_deadline(game_id, "mind_games", time.time() + MIND_GAMES_TOTAL_DURATION)
     alias_snapshot = game_service.alias_payload(game_id)
     await manager.broadcast_to_game({
         "type": "group_stage",
@@ -211,6 +268,7 @@ async def begin_mind_games(game_id: str, game_service: GameService):
     for mind_game in mind_games:
         deadline = time.time() + mind_game.duration_seconds
         phase_scheduler.mind_game_start_times[game_id][mind_game.id] = time.perf_counter()
+        phase_scheduler.record_mind_game_deadline(game_id, mind_game.id, deadline)
 
         await manager.broadcast_to_game({
             "type": "mind_game_prompt",
@@ -229,15 +287,42 @@ async def begin_mind_games(game_id: str, game_service: GameService):
 
         await asyncio.sleep(mind_game.duration_seconds)
 
-        reveal_bundle = game_service.collect_mind_game_reveal(game_id).get(mind_game.id, {})
-        await manager.broadcast_to_game({
-            "type": "mind_game_reveal",
-            "mind_game": reveal_bundle
-        }, game_id)
+        await maybe_broadcast_mind_game_reveal(game_id, game_service, mind_game.id)
+
+    # If the stage timer has elapsed, force transition to react even if the client stalled.
+    game = game_service.get_game(game_id)
+    if game and game.status == "mind_games" and phase_scheduler.stage_expired(game_id, "mind_games"):
+        await begin_group_react(game_id, game_service)
+
+
+async def maybe_broadcast_mind_game_reveal(game_id: str, game_service: GameService, mind_game_id: int):
+    """Broadcast a mind game reveal once its deadline hits."""
+    deadline = phase_scheduler.pop_mind_game_deadline(game_id, mind_game_id)
+    now = time.time()
+    if deadline and now < deadline:
+        await asyncio.sleep(deadline - now)
+
+    # Clear prompt tracking for this mind game
+    phase_scheduler.mind_game_start_times.get(game_id, {}).pop(mind_game_id, None)
+
+    reveal_map = game_service.collect_mind_game_reveal(game_id)
+    reveal_bundle = reveal_map.get(mind_game_id)
+    if not reveal_bundle:
+        return
+
+    payload = {
+        "type": "mind_game_reveal",
+        "mind_game": reveal_bundle,
+        "summary": reveal_bundle.get("summary"),
+        "sequence": reveal_bundle.get("sequence"),
+        "prompt": reveal_bundle.get("prompt")
+    }
+    await manager.broadcast_to_game(payload, game_id)
 
 
 async def begin_group_react(game_id: str, game_service: GameService):
     game_service.set_group_stage(game_id, "react")
+    phase_scheduler.record_stage_deadline(game_id, "react", time.time() + GROUP_REACT_DURATION)
     await manager.broadcast_to_game({
         "type": "group_stage",
         "phase": "react",
@@ -247,6 +332,15 @@ async def begin_group_react(game_id: str, game_service: GameService):
         "deadline": time.time() + GROUP_REACT_DURATION
     }, game_id)
 
+    # Ensure any remaining mind game reveals are flushed before free chat.
+    pending_reveals = list(phase_scheduler.mind_game_start_times.get(game_id, {}).keys())
+    for mind_game_id in pending_reveals:
+        await maybe_broadcast_mind_game_reveal(game_id, game_service, mind_game_id)
+
+    # If react window already expired, move to voting.
+    if phase_scheduler.stage_expired(game_id, "react"):
+        await start_voting_phase(game_id)
+
 
 async def ai_submit_mind_game(game_id: str, mind_game_id: int, game_service: GameService):
     await asyncio.sleep(random.uniform(1.5, 3.5))
@@ -255,17 +349,15 @@ async def ai_submit_mind_game(game_id: str, mind_game_id: int, game_service: Gam
     if not game or game.mode != "group":
         return
 
-    target_id = (game.settings or {}).get("ai_target_id")
-    if not target_id:
+    personas = (game.settings or {}).get("ai_group_personas", {})
+    if not personas:
         return
 
-    profile = game_service.get_personality_profile(target_id)
-    if not profile:
-        return
-
-    player = game_service.get_player(target_id)
-    if not player:
-        return
+    chosen_persona = random.choice(list(personas.values()))
+    player = game_service.get_player(chosen_persona.get("player_id")) if chosen_persona.get("player_id") else None
+    profile = None
+    if player:
+        profile = game_service.get_personality_profile(player.id)
 
     mind_games = {mg.id: mg for mg in game_service.get_mind_games(game_id)}
     mind_game = mind_games.get(mind_game_id)
@@ -276,19 +368,20 @@ async def ai_submit_mind_game(game_id: str, mind_game_id: int, game_service: Gam
         {"role": "user", "content": f"Mind game prompt: {mind_game.prompt}\nInstructions: {mind_game.instructions or 'Answer in character.'}"}
     ]
 
-    alias_map = game_service.alias_payload(game_id)
-    alias_entry = alias_map.get(target_id, {})
-
-    response = await ai_impersonator.impersonate(
-        username=player.username,
-        profile={
-            "personality_traits": profile.personality_traits,
-            "typing_patterns": profile.typing_patterns,
-            "writing_style": profile.writing_style,
-            "web_data": profile.web_data
-        },
-        message_history=history
+    response_payload = await ai_impersonator.group_blend(
+        history=history,
+        personas=personas,
+        replying_to=chosen_persona.get("player_id"),
+        target_profile={
+            "personality_traits": profile.personality_traits if profile else {},
+            "typing_patterns": profile.typing_patterns if profile else {},
+            "writing_style": profile.writing_style if profile else {},
+            "web_data": profile.web_data if profile else {}
+        }
     )
+
+    response = response_payload.get("message")
+    chosen_persona = response_payload.get("persona", chosen_persona)
 
     latency_ms = None
     start_times = phase_scheduler.mind_game_start_times.get(game_id, {})
@@ -320,7 +413,8 @@ async def start_game(game_id: str, db: Session = Depends(get_db)):
     
     # Notify all players
     learning_duration = game.settings.get("learning_time", 180)
-    learning_deadline = datetime.utcnow().timestamp() + learning_duration
+    learning_deadline = time.time() + learning_duration
+    phase_scheduler.record_stage_deadline(game_id, "learning", learning_deadline)
     await manager.broadcast_to_game({
         "type": "phase_change",
         "phase": "learning",
@@ -378,7 +472,8 @@ async def start_research_phase(game_id: str, db: Optional[Session] = None):
         game = game_service.get_game(game_id)
         timeline = game.settings.get("group_timeline") if game else None
         play_duration = GROUP_CHAT_DURATION if game and game.mode == "group" else game.settings.get("round_time", 300)
-        play_deadline = datetime.utcnow().timestamp() + play_duration
+        play_deadline = time.time() + play_duration
+        phase_scheduler.record_stage_deadline(game_id, "playing", play_deadline)
         payload = {
             "type": "phase_change",
             "phase": "playing",
@@ -469,6 +564,7 @@ async def finish_game_auto(game_id: str, db: Session):
             "analysis": result.analysis
         }
     }, game_id)
+    phase_scheduler.clear_game(game_id)
 
 @app.post("/game/{game_id}/finish")
 async def finish_game(game_id: str, db: Session = Depends(get_db)):
@@ -476,6 +572,7 @@ async def finish_game(game_id: str, db: Session = Depends(get_db)):
     game_service = GameService(db)
     
     result = await game_service.finish_game(game_id)
+    phase_scheduler.clear_game(game_id)
     
     # Broadcast results to all players
     await manager.broadcast_to_game({
@@ -511,7 +608,11 @@ async def get_game_state(game_id: str, db: Session = Depends(get_db)):
         "current_round": game.current_round,
         "total_rounds": game.total_rounds,
         "players": [
-            {"id": p.id, "username": p.username, "score": p.score}
+            {
+                "id": p.id,
+                "username": p.username,
+                "score": p.score
+            }
             for p in players
         ]
     }
@@ -547,11 +648,31 @@ async def websocket_endpoint(
                 if game.status == "learning":
                     recipient_id = "ai"
                 
+                latency_ms = phase_scheduler.consume_typing_latency(game_id, player_id)
+
+                now_ts = time.time()
+
+                # Enforce phase deadlines before accepting the message
+                phase_name = game.status if game else None
+                if phase_name in {"playing", "mind_games", "react"}:
+                    if phase_scheduler.stage_expired(game_id, phase_name, now_ts):
+                        await manager.send_personal_message({
+                            "type": "chat_error",
+                            "reason": "deadline_expired",
+                            "phase": phase_name
+                        }, player_id)
+                        if phase_name == "mind_games":
+                            await begin_group_react(game_id, game_service)
+                        elif phase_name == "react":
+                            await start_voting_phase(game_id, db)
+                        continue
+
                 stored_message = await game_service.send_message(
                     game_id=game_id,
                     sender_id=player_id,
                     content=content,
-                    recipient_id=recipient_id
+                    recipient_id=recipient_id,
+                    latency_ms=latency_ms
                 )
                 payload = {
                     "type": "chat_message",
@@ -563,7 +684,8 @@ async def websocket_endpoint(
                     "recipient_id": stored_message.recipient_id,
                     "alias": stored_message.display_alias,
                     "alias_badge": stored_message.alias_badge,
-                    "alias_color": stored_message.alias_color
+                    "alias_color": stored_message.alias_color,
+                    "latency_ms": stored_message.latency_ms
                 }
                 
                 if game.status == "learning":
@@ -576,16 +698,86 @@ async def websocket_endpoint(
                     asyncio.create_task(
                         ai_respond_learning(game_id, player_id, content, db)
                     )
-                elif game.mode == "group" and game.status == "playing":
-                    if game.settings.get("ai_target_id"):
-                        asyncio.create_task(
-                            ai_respond_in_game(game_id, player_id, content, db)
-                        )
+                elif game.mode == "group" and game.status in {"playing", "mind_games", "react"}:
+                    asyncio.create_task(
+                        ai_respond_in_group(game_id, player_id, content, db)
+                    )
             
+            elif msg_type == "mind_game_response":
+                mind_game_id = message_data.get("mind_game_id")
+                answer = message_data.get("answer", "")
+                timestamp = message_data.get("timestamp") or datetime.utcnow().isoformat()
+
+                db = next(get_db())
+                game_service = GameService(db)
+                game = game_service.get_game(game_id)
+                player = game_service.get_player(player_id)
+                mind_games = {mg.id: mg for mg in game_service.get_mind_games(game_id)}
+                mind_game = mind_games.get(mind_game_id)
+
+                if not game or not player or not mind_game:
+                    continue
+
+                now_ts = time.time()
+                mind_deadline = phase_scheduler.get_mind_game_deadline(game_id, mind_game_id)
+                stage_expired = phase_scheduler.stage_expired(game_id, "mind_games", now_ts)
+                if mind_deadline and now_ts > mind_deadline:
+                    await manager.send_personal_message({
+                        "type": "mind_game_error",
+                        "mind_game_id": mind_game_id,
+                        "reason": "deadline_expired"
+                    }, player_id)
+                    continue
+                if stage_expired and game.status == "mind_games":
+                    await manager.send_personal_message({
+                        "type": "mind_game_error",
+                        "mind_game_id": mind_game_id,
+                        "reason": "phase_ended"
+                    }, player_id)
+                    await begin_group_react(game_id, game_service)
+                    continue
+
+                start_times = phase_scheduler.mind_game_start_times.get(game_id, {})
+                latency_ms = None
+                if mind_game_id in start_times:
+                    latency_ms = int((time.perf_counter() - start_times[mind_game_id]) * 1000)
+
+                game_service.log_mind_game_response(
+                    game_id=game_id,
+                    mind_game_id=mind_game_id,
+                    player=player,
+                    response=answer,
+                    is_ai=False,
+                    latency_ms=latency_ms
+                )
+
+                await manager.send_personal_message({
+                    "type": "mind_game_ack",
+                    "mind_game_id": mind_game_id,
+                    "status": "received"
+                }, player_id)
             elif msg_type == "typing":
                 # Typing indicator
                 is_typing = message_data.get("is_typing", False)
-                await manager.send_typing_indicator(game_id, player_id, is_typing)
+                alias_payload = None
+                if game:
+                    if game.mode == "group":
+                        alias_payload = (game.settings or {}).get("ai_group_personas", {}).get(player_id)
+                    else:
+                        player_obj = game_service.get_player(player_id)
+                        if player_obj:
+                            alias_payload = {
+                                "alias": player_obj.alias,
+                                "badge": player_obj.alias_badge,
+                                "color": player_obj.alias_color
+                            }
+
+                alias_payload = alias_payload or {}
+
+                if is_typing:
+                    phase_scheduler.mark_typing_start(game_id, player_id)
+
+                await manager.send_typing_indicator(game_id, player_id, alias_payload, is_typing)
     
     except WebSocketDisconnect:
         manager.disconnect(websocket, game_id, player_id)
@@ -629,65 +821,120 @@ async def ai_respond_learning(game_id: str, player_id: str, user_message: str, d
         "timestamp": stored.timestamp.isoformat()
     }, player_id)
 
-async def ai_respond_in_game(game_id: str, replying_to_player: str, message: str, db: Session):
-    """AI responds during game phase (while impersonating)"""
+async def ai_respond_in_group(game_id: str, replying_to_player: str, message: str, db: Session):
     game_service = GameService(db)
     game = game_service.get_game(game_id)
-    
+
     if not game:
         return
-    
-    # Get who AI is impersonating
-    target_id = game.settings.get("ai_target_id")
-    if not target_id:
-        return
-    
-    # Get personality profile
-    profile = game_service.get_personality_profile(target_id)
-    if not profile:
-        return
-    
-    # Get recent conversation
-    messages = game_service.get_messages(game_id, phase="game")
+
+    players = game_service.get_players(game_id)
+    player_map = {p.id: p for p in players}
+
+    personas = game.settings.get("ai_group_personas", {}) if game.settings else {}
+    target_persona = None
+
+    # Prefer responding with the same alias as the human who was addressed
+    if replying_to_player in personas:
+        target_persona = personas[replying_to_player]
+    else:
+        # Pick a random persona to maintain variety
+        target_persona = random.choice(list(personas.values())) if personas else None
+
+    profile = None
+    if replying_to_player in player_map:
+        profile = game_service.get_personality_profile(replying_to_player)
+
+    history_messages = game_service.get_messages(game_id)
     history = [
-        {"role": "user" if not m.is_ai else "assistant", "content": m.content}
-        for m in messages[-10:]
+        {
+            "role": "assistant" if m.is_ai else "user",
+            "content": m.content
+        }
+        for m in history_messages[-12:]
     ]
     history.append({"role": "user", "content": message})
-    
-    # AI generates response as the target
-    profile_dict = {
-        "personality_traits": profile.personality_traits,
-        "typing_patterns": profile.typing_patterns,
-        "writing_style": profile.writing_style,
-        "web_data": profile.web_data
-    }
-    
-    player = db.query(Player).filter(Player.id == target_id).first()
-    username = player.username if player else "User"
-    
-    ai_response = await ai_impersonator.impersonate(
-        username=username,
-        profile=profile_dict,
-        message_history=history
+
+    profile_dict = {}
+    if profile:
+        profile_dict = {
+            "personality_traits": profile.personality_traits,
+            "typing_patterns": profile.typing_patterns,
+            "writing_style": profile.writing_style,
+            "web_data": profile.web_data
+        }
+
+    # Collect memory context (prior facts about players from universal knowledge)
+    memory_context = []
+    try:
+        from memory_service import MemoryService
+        memory_svc = MemoryService(db)
+        
+        # Use semantic search to find relevant universal knowledge
+        query_text = f"impersonation strategy for group chat with message: {message}"
+        knowledge_items = await memory_svc.retrieve_universal_knowledge(query_text, limit=8)
+        memory_context = [f"[{k['category']}] {k['pattern']}: {k['description']}" for k in knowledge_items]
+    except Exception as e:
+        print(f"Memory retrieval error: {e}, using fallback")
+        # Fallback to simple query
+        universal_knowledge = db.query(UniversalKnowledge).filter(
+            UniversalKnowledge.confidence > 0.6
+        ).order_by(UniversalKnowledge.confidence.desc()).limit(8).all()
+        memory_context = [f"[{k.category}] {k.pattern}: {k.description}" for k in universal_knowledge]
+
+    ai_response = await ai_impersonator.group_blend(
+        history=history,
+        personas=personas,
+        replying_to=replying_to_player,
+        target_profile=profile_dict,
+        game_id=game_id,
+        memory_context=memory_context
     )
+
+    # Respect AI's decision to stay silent
+    should_respond = ai_response.get("should_respond", True)
+    if not should_respond:
+        # AI chose strategic silence - do nothing
+        return
     
-    # Store and broadcast
+    latency_ms = ai_response.get("latency_ms")
+    text = ai_response.get("message")
+    persona_used = ai_response.get("persona")
+
+    if not text:
+        return
+    
+    # Record AI latency for this persona to train future mimicry
+    if persona_used and persona_used.get("player_id"):
+        ai_impersonator.record_latency(game_id, persona_used.get("player_id"), latency_ms or 2000)
+    
+    # Add realistic delay before sending to simulate typing
+    if latency_ms and latency_ms > 0:
+        await asyncio.sleep(latency_ms / 1000.0)
+
     stored = await game_service.send_message(
         game_id=game_id,
         sender_id="ai",
-        content=ai_response,
+        content=text,
         is_ai=True,
-        impersonating_id=target_id
+        impersonating_id=None,
+        display_alias=persona_used.get("alias") if persona_used else None,
+        alias_badge=persona_used.get("badge") if persona_used else None,
+        alias_color=persona_used.get("color") if persona_used else None,
+        latency_ms=latency_ms
     )
+
     payload = {
         "type": "chat_message",
-        "sender_id": target_id,
-        "username": username,
-        "content": ai_response,
+        "sender_id": persona_used.get("player_id") if persona_used else "ai",
+        "username": persona_used.get("alias") if persona_used else "Synth",
+        "content": text,
         "timestamp": stored.timestamp.isoformat(),
-        "phase": "playing",
-        "impersonated_by": "ai"
+        "phase": game.status,
+        "impersonated_by": "ai",
+        "alias": persona_used.get("alias") if persona_used else None,
+        "alias_badge": persona_used.get("badge") if persona_used else None,
+        "alias_color": persona_used.get("color") if persona_used else None
     }
     await manager.broadcast_to_game(payload, game_id)
 

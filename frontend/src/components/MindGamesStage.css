@@ -130,6 +130,12 @@
   cursor: not-allowed;
 }
 
+.mind-game-input .submission-status {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .mind-games-reveal .reveal-list {
   display: flex;
   flex-direction: column;

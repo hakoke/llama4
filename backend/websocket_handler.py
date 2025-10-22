@@ -66,12 +66,15 @@ class ConnectionManager:
                 return player_id
         return None
     
-    async def send_typing_indicator(self, game_id: str, player_id: str, is_typing: bool):
+    async def send_typing_indicator(self, game_id: str, player_id: str, alias_payload: dict, is_typing: bool):
         """Send typing indicator"""
         await self.broadcast_to_game({
             "type": "typing",
             "player_id": player_id,
-            "is_typing": is_typing
+            "is_typing": is_typing,
+            "alias": alias_payload.get("alias"),
+            "alias_badge": alias_payload.get("badge"),
+            "alias_color": alias_payload.get("color")
         }, game_id, exclude_player=player_id)
 
 manager = ConnectionManager()

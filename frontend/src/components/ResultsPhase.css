@@ -23,6 +23,12 @@
   color: var(--text-primary);
 }
 
+.reveal-subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
 .reveal-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -64,6 +70,119 @@
   color: var(--text-primary);
 }
 
+.deception-metrics {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.deception-metrics h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 12px;
+}
+
+.deception-metrics ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deception-metrics li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.reveal-card.mind-games-recap {
+  grid-column: span 2;
+}
+
+.toggle-btn {
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mind-games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.mind-game-recap-item h4 {
+  font-size: 14px;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.mind-game-recap-item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mind-game-recap-item li {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.mind-game-recap-item li.ai-answer {
+  border-color: rgba(255, 0, 110, 0.3);
+  background: rgba(255, 0, 110, 0.05);
+}
+
+.alias-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  margin-bottom: 8px;
+}
+
+.alias-tag .badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.ai-flag {
+  margin-left: 4px;
+  padding: 2px 6px;
+  background: rgba(255, 0, 110, 0.4);
+  border-radius: 4px;
+  font-size: 9px;
+}
+
 .reveal-card.analysis pre {
   white-space: pre-wrap;
   font-family: 'JetBrains Mono', monospace;
@@ -91,10 +210,51 @@
   line-height: 1.6;
 }
 
+.insights-item header {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .insights-item header span {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.expand-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  transition: transform 0.2s;
+}
+
+.insights-item.expanded .expand-icon {
+  transform: rotate(180deg);
+}
+
+.insight-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.insights-item.expanded .insight-content {
+  max-height: 800px;
+}
+
+.insight-content p.notes {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .insights-item.placeholder {

@@ -8,6 +8,11 @@ import ResearchPhase from './components/ResearchPhase'
 import GamePhase from './components/GamePhase'
 import VotingPhase from './components/VotingPhase'
 import ResultsPhase from './components/ResultsPhase'
+import MindGamesStage from './components/MindGamesStage'
+import ReactStage from './components/ReactStage'
+import AccessibilityPanel from './components/AccessibilityPanel'
+import { audioController } from './utils/AudioController'
+import { hapticController } from './utils/HapticController'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000'
@@ -78,11 +83,36 @@ function GameApp() {
   const [timeline, setTimeline] = useState(null)
   const [activeMindGame, setActiveMindGame] = useState(null)
   const [mindGameReveals, setMindGameReveals] = useState([])
+  const [submissionStatus, setSubmissionStatus] = useState({})
+  const [typingIndicators, setTypingIndicators] = useState({})
+  const [latencyStats, setLatencyStats] = useState({})
+  const typingStateRef = useRef({})
+  
+  // Accessibility settings
+  const [textSize, setTextSize] = useState('normal') // small, normal, large
+  const [colorblindMode, setColorblindMode] = useState('none') // none, protanopia, deuteranopia, tritanopia
+  const [highContrast, setHighContrast] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(false)
+  const [hapticsEnabled, setHapticsEnabled] = useState(true)
+  const [audioVolume, setAudioVolume] = useState(70)
 
   const hudTicker = useRef()
   const [currentTick, setCurrentTick] = useState(Date.now())
   const audioCtxRef = useRef(null)
   const oscillatorsRef = useRef(null)
+
+  // Apply accessibility settings to root element
+  useEffect(() => {
+    document.documentElement.setAttribute('data-text-size', textSize)
+    document.documentElement.setAttribute('data-colorblind', colorblindMode)
+    document.documentElement.setAttribute('data-high-contrast', highContrast.toString())
+    document.documentElement.setAttribute('data-reduced-motion', reducedMotion.toString())
+    
+    // Expose controllers to window for component access
+    window.audioController = audioController
+    window.hapticController = hapticController
+    hapticController.setEnabled(hapticsEnabled)
+  }, [textSize, colorblindMode, highContrast, reducedMotion, hapticsEnabled])
 
   useEffect(() => {
     if (gameId && playerId && phase !== 'menu') {
@@ -100,6 +130,14 @@ function GameApp() {
       clearInterval(hudTicker.current)
     }
     hudTicker.current = setInterval(() => setCurrentTick(Date.now()), 1000)
+    
+    // Start ambient audio for game phases
+    if (phase === 'playing' || phase === 'mind_games' || phase === 'react') {
+      audioController.startAmbient(phase)
+    } else {
+      audioController.stopAmbient()
+    }
+    
     return () => {
       if (hudTicker.current) clearInterval(hudTicker.current)
     }
@@ -114,12 +152,15 @@ function GameApp() {
     if (audioCtxRef.current) {
       audioCtxRef.current.close()
     }
+    audioController.cleanup()
   }, [])
 
   const handleWebSocketMessage = (data) => {
     switch (data.type) {
       case 'player_joined':
         setPlayers((prev) => [...prev, data.player])
+        audioController.playPlayerJoined()
+        if (hapticsEnabled) hapticController.playerJoined()
         break
       case 'group_stage':
         setPhase(data.stage)
@@ -128,10 +169,14 @@ function GameApp() {
           setActiveMindGame(null)
           setMindGameReveals([])
         }
+        audioController.playPhaseTransition()
+        if (hapticsEnabled) hapticController.phaseTransition()
         break
       case 'phase_change':
         setPhase(data.phase)
         setMessages([])
+        audioController.playPhaseTransition()
+        if (hapticsEnabled) hapticController.phaseTransition()
         if (data.phase === 'learning') {
           setPhaseTimers((prev) => ({
             ...prev,
@@ -192,12 +237,55 @@ function GameApp() {
           impersonated_by: data.impersonated_by,
           alias: data.alias,
           alias_badge: data.alias_badge,
-          alias_color: data.alias_color
+          alias_color: data.alias_color,
+          latency_ms: data.latency_ms
         }])
+        if (data.sender_id !== playerId) {
+          audioController.playMessageReceived()
+        }
+        // Clear typing indicator for this sender
+        setTypingIndicators((prev) => {
+          const updated = { ...prev }
+          delete updated[data.sender_id]
+          return updated
+        })
+        break
+      case 'typing':
+        setTypingIndicators((prev) => ({
+          ...prev,
+          [data.player_id]: {
+            isTyping: data.is_typing,
+            alias: data.alias,
+            alias_badge: data.alias_badge,
+            alias_color: data.alias_color
+          }
+        }))
+        if (data.is_typing && hapticsEnabled) {
+          hapticController.typing()
+        }
         break
       case 'mind_game_prompt':
+        setSubmissionStatus((prev) => ({ ...prev, [data.mind_game.id]: { status: 'pending' } }))
         setPhase('mind_games')
         setActiveMindGame({ ...data.mind_game, deadline: data.deadline })
+        audioController.playPhaseTransition()
+        if (hapticsEnabled) hapticController.mindGamePrompt()
+        break
+      case 'mind_game_ack':
+        setSubmissionStatus((prev) => ({
+          ...prev,
+          [data.mind_game_id]: { status: 'submitted' }
+        }))
+        audioController.playMessageSent()
+        if (hapticsEnabled) hapticController.success()
+        break
+      case 'mind_game_error':
+        setSubmissionStatus((prev) => ({
+          ...prev,
+          [data.mind_game_id]: { status: 'error', error: data.reason }
+        }))
+        audioController.playMessageSent()
+        if (hapticsEnabled) hapticController.error()
         break
       case 'mind_game_reveal':
         setMindGameReveals((prev) => {
@@ -205,10 +293,14 @@ function GameApp() {
           return [...others, data.mind_game]
         })
         setActiveMindGame(null)
+        audioController.playRevealStinger()
+        if (hapticsEnabled) hapticController.mindGameReveal()
         break
       case 'game_finished':
         setPhase('results')
         if (data.results) setResults(data.results)
+        audioController.playAIRevealed()
+        if (hapticsEnabled) hapticController.aiRevealed()
         break
       default:
         console.log('Unknown message type:', data.type)
@@ -325,6 +417,17 @@ function GameApp() {
         content,
         timestamp: new Date().toISOString()
       }))
+      audioController.playMessageSent()
+      if (hapticsEnabled) hapticController.tap()
+    }
+  }
+
+  const sendTypingIndicator = (isTyping) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'typing',
+        is_typing: isTyping
+      }))
     }
   }
 
@@ -395,6 +498,22 @@ function GameApp() {
       <div className="ambient-orb" />
       <div className="ambient-orb" />
       <div className="nebula-grid" />
+      
+      <AccessibilityPanel
+        textSize={textSize}
+        onTextSizeChange={setTextSize}
+        colorblindMode={colorblindMode}
+        onColorblindModeChange={setColorblindMode}
+        highContrast={highContrast}
+        onHighContrastChange={setHighContrast}
+        reducedMotion={reducedMotion}
+        onReducedMotionChange={setReducedMotion}
+        hapticsEnabled={hapticsEnabled}
+        onHapticsChange={setHapticsEnabled}
+        audioVolume={audioVolume}
+        onAudioVolumeChange={setAudioVolume}
+      />
+      
       <div className="game-stage">
         <header className="hud-header">
           <div className="hud-title">
@@ -585,6 +704,9 @@ function GameApp() {
                 deadline={phaseTimers.playing.deadline}
                 duration={phaseTimers.playing.duration}
                 aliases={aliases}
+                typingIndicators={typingIndicators}
+                onTyping={sendTypingIndicator}
+                reducedMotion={reducedMotion}
                 tipMessage="Watch for latency tells. Humans hesitate, the AI studies everyone before responding."
               />
             </motion.section>
@@ -607,8 +729,13 @@ function GameApp() {
                 deadline={phaseTimers.mind_games.deadline}
                 onSendMessage={sendMessage}
                 onSubmitResponse={submitMindGameResponse}
+                submissionStatus={submissionStatus}
                 playerId={playerId}
                 messages={mindGamesMessages}
+                typingIndicators={typingIndicators}
+                onTyping={sendTypingIndicator}
+                reducedMotion={reducedMotion}
+                audioController={audioController}
               />
             </motion.section>
           )}
@@ -629,6 +756,9 @@ function GameApp() {
                 onSendMessage={sendMessage}
                 playerId={playerId}
                 deadline={phaseTimers.react.deadline}
+                typingIndicators={typingIndicators}
+                onTyping={sendTypingIndicator}
+                reducedMotion={reducedMotion}
               />
             </motion.section>
           )}
@@ -663,6 +793,9 @@ function GameApp() {
                 results={results}
                 players={players}
                 onPlayAgain={backToMenu}
+                mindGameReveals={mindGameReveals}
+                latencyStats={latencyStats}
+                aliases={aliases}
               />
             </motion.section>
           )}

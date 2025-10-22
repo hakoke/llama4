@@ -3,19 +3,64 @@ import { motion, AnimatePresence } from 'framer-motion'
 import GamePhase from './GamePhase'
 import './MindGamesStage.css'
 
-function MindGamesStage({ activeMindGame, mindGameReveals, players, aliases, deadline, onSendMessage, onSubmitResponse, playerId, messages }) {
+function MindGamesStage({
+  activeMindGame,
+  mindGameReveals,
+  players,
+  aliases,
+  deadline,
+  onSendMessage,
+  onSubmitResponse,
+  submissionStatus,
+  playerId,
+  messages,
+  typingIndicators,
+  reducedMotion,
+  onTyping,
+  audioController,
+  accessibilityMode
+}) {
   const [answer, setAnswer] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [timeLeft, setTimeLeft] = useState(null)
+  const [statusMessage, setStatusMessage] = useState('')
 
   useEffect(() => {
     setSubmitted(false)
     setAnswer('')
+    setStatusMessage('')
   }, [activeMindGame])
 
   useEffect(() => {
     if (!deadline) return
-    const tick = () => setTimeLeft(Math.max(0, Math.floor(deadline - Date.now() / 1000)))
+    let warningTriggered = false
+    let criticalTriggered = false
+    
+    const tick = () => {
+      const remaining = Math.max(0, Math.floor(deadline - Date.now() / 1000))
+      setTimeLeft(remaining)
+      
+      // Timer warnings for mind games
+      if (remaining === 10 && !warningTriggered) {
+        warningTriggered = true
+        if (window.audioController) {
+          window.audioController.playTimerWarning()
+        }
+        if (window.hapticController && window.hapticController.isAvailable()) {
+          window.hapticController.timerWarning()
+        }
+      }
+      
+      if (remaining <= 3 && remaining > 0 && !criticalTriggered) {
+        criticalTriggered = true
+        if (window.audioController) {
+          window.audioController.playTimerCritical()
+        }
+        if (window.hapticController && window.hapticController.isAvailable()) {
+          window.hapticController.timerCritical()
+        }
+      }
+    }
     tick()
     const timer = setInterval(tick, 1000)
     return () => clearInterval(timer)
@@ -25,9 +70,20 @@ function MindGamesStage({ activeMindGame, mindGameReveals, players, aliases, dea
     if (!answer.trim()) return
     onSubmitResponse?.({ mind_game_id: activeMindGame?.id, answer: answer.trim() })
     setSubmitted(true)
+    setStatusMessage('Answer locked — watch the reveal queue')
   }
 
   const activeReveal = mindGameReveals.find((bundle) => bundle.sequence === activeMindGame?.sequence)
+
+  const renderStatus = () => {
+    const status = submissionStatus?.[activeMindGame?.id]
+    if (!status) return statusMessage
+    if (status.error === 'deadline_expired') return 'Missed the deadline — answer not submitted'
+    if (status.status === 'pending') return 'Sending…'
+    if (status.status === 'submitted') return 'Delivered'
+    if (status.error) return `Error: ${status.error}`
+    return statusMessage
+  }
 
   return (
     <div className="mind-games-stage">
@@ -85,6 +141,7 @@ function MindGamesStage({ activeMindGame, mindGameReveals, players, aliases, dea
                 maxLength={460}
                 disabled={submitted}
                 placeholder="Drop your answer privately. The reveal hits after the timer."
+                aria-disabled={submitted}
               />
               <motion.button
                 whileHover={{ scale: answer.trim() ? 1.03 : 1 }}
@@ -93,8 +150,13 @@ function MindGamesStage({ activeMindGame, mindGameReveals, players, aliases, dea
                 disabled={submitted || !answer.trim()}
                 onClick={handleSubmit}
               >
-                {submitted ? 'Submitted' : 'Send Answer'}
+                {submitted
+                  ? submissionStatus?.[activeMindGame.id]?.status === 'submitted'
+                    ? 'Delivered'
+                    : 'Sending…'
+                  : 'Send Answer'}
               </motion.button>
+              {renderStatus() && <p className="submission-status" role="status">{renderStatus()}</p>}
             </div>
           )}
         </section>
@@ -149,6 +211,9 @@ function MindGamesStage({ activeMindGame, mindGameReveals, players, aliases, dea
           headerTag="Side Channel"
           headerTitle="Chat stays masked. Compare notes quietly while prompts roll."
           tipMessage="Don’t give your alias away. React cryptically and let others over-explain themselves."
+          typingIndicators={typingIndicators}
+          reducedMotion={reducedMotion}
+          onTyping={onTyping}
         />
       </div>
     </div>

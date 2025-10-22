@@ -173,13 +173,19 @@ class GameService:
         
         if game.mode == "group":
             game.total_rounds = 1
-            # Pick random player for AI to impersonate
             players = self.db.query(Player).filter(Player.game_id == game_id).all()
             if players:
-                target = random.choice(players)
-                # Store in game settings
                 settings = game.settings or {}
-                settings["ai_target_id"] = target.id
+                settings.pop("ai_target_id", None)
+                settings["ai_group_personas"] = {
+                    p.id: {
+                        "alias": p.alias,
+                        "badge": p.alias_badge,
+                        "color": p.alias_color,
+                        "player_id": p.id
+                    }
+                    for p in players
+                }
                 settings["group_timeline"] = self._build_group_timeline(players)
                 game.settings = settings
                 # Preload mind games
@@ -301,7 +307,10 @@ class GameService:
         for mg in mind_games:
             responses_by_game[mg.id] = []
 
+        reveal = {}
+        latencies_aggregate = []
         for entry in responses:
+            submitted_at = entry.submitted_at.isoformat() if entry.submitted_at else None
             payload = {
                 "alias": entry.alias,
                 "alias_badge": entry.alias_badge,
@@ -309,18 +318,43 @@ class GameService:
                 "response": entry.response,
                 "latency_ms": entry.latency_ms,
                 "is_ai": entry.is_ai,
-                "player_id": entry.player_id
+                "player_id": entry.player_id,
+                "submitted_at": submitted_at
             }
             responses_by_game.setdefault(entry.mind_game_id, []).append(payload)
+            if entry.latency_ms is not None:
+                latencies_aggregate.append(entry.latency_ms)
 
-        reveal = {}
         for mg in mind_games:
+            responses = responses_by_game.get(mg.id, [])
+
+            responses.sort(key=lambda r: (
+                datetime.fromisoformat(r["submitted_at"]).timestamp() if r.get("submitted_at") else float("inf"),
+                r.get("latency_ms") if r.get("latency_ms") is not None else float("inf")
+            ))
+
+            latencies = [r["latency_ms"] for r in responses if r.get("latency_ms") is not None]
+            summary = {
+                "total_responses": len(responses),
+                "ai_count": sum(1 for r in responses if r.get("is_ai")),
+                "human_count": sum(1 for r in responses if not r.get("is_ai")),
+                "ai_aliases": [r.get("alias") for r in responses if r.get("is_ai")],
+                "fastest_latency_ms": min(latencies) if latencies else None,
+                "slowest_latency_ms": max(latencies) if latencies else None,
+                "average_latency_ms": int(sum(latencies) / len(latencies)) if latencies else None
+            }
+
+            for idx, resp in enumerate(responses, start=1):
+                resp["submission_index"] = idx
+                resp["submission_order"] = idx
+
             reveal[mg.id] = {
                 "sequence": mg.sequence,
                 "prompt": mg.prompt,
                 "instructions": mg.instructions,
                 "reveal_title": mg.reveal_title,
-                "responses": responses_by_game.get(mg.id, [])
+                "responses": responses,
+                "summary": summary
             }
         return reveal
 
@@ -454,8 +488,32 @@ class GameService:
             correct_guesses = sum(1 for v in votes if v.is_correct)
             ai_success_rate = 1 - (correct_guesses / len(votes)) if votes else 0
         
+        # Collect mind-game data and latency stats
+        mind_game_data = {}
+        latency_stats = {}
+        if game.mode == "group":
+            mind_game_reveals = self.collect_mind_game_reveal(game_id)
+            mind_game_data = {
+                "reveals": mind_game_reveals,
+                "summary": {mgid: data.get("summary") for mgid, data in mind_game_reveals.items()}
+            }
+        
+        # Collect latency patterns
+        messages = self.get_messages(game_id)
+        for player in players:
+            player_messages = [m for m in messages if m.sender_id == player.id and m.latency_ms is not None]
+            if player_messages:
+                latencies = [m.latency_ms for m in player_messages]
+                latency_stats[player.id] = {
+                    "username": player.username,
+                    "average": sum(latencies) / len(latencies),
+                    "min": min(latencies),
+                    "max": max(latencies),
+                    "count": len(latencies)
+                }
+        
         # Generate AI's analysis of each player
-        analysis_text = await ai_impersonator.generate_game_analysis(game_id, players)
+        analysis_text = await ai_impersonator.generate_game_analysis(game_id, players, mind_game_data, latency_stats)
         player_insights = await ai_impersonator.extract_player_insights(game_id, players, analysis_text)
         
         result = GameResult(
@@ -470,14 +528,28 @@ class GameService:
         self.db.commit()
         
         # AI self-reflection and universal learning
-        await self._ai_reflection(game_id, ai_success_rate)
+        await self._ai_reflection(game_id, ai_success_rate, mind_game_data, latency_stats)
         
         return result
     
-    async def _ai_reflection(self, game_id: str, success_rate: float):
+    async def _ai_reflection(self, game_id: str, success_rate: float, mind_game_data: Dict = None, latency_stats: Dict = None):
         """AI reflects on game and updates universal knowledge"""
+        # Summarize mind-game performance
+        mind_game_summary = None
+        if mind_game_data:
+            mind_game_summary = mind_game_data.get("summary")
+        
+        # Summarize latency effectiveness
+        latency_effectiveness = None
+        if latency_stats:
+            latency_effectiveness = {
+                "player_count": len(latency_stats),
+                "average_latencies": {pid: data["average"] for pid, data in latency_stats.items()},
+                "mimicry_success": success_rate > 0.6
+            }
+        
         # Ask AI to reflect on what worked/didn't work
-        reflection = await ai_impersonator.reflect_on_game(game_id, success_rate)
+        reflection = await ai_impersonator.reflect_on_game(game_id, success_rate, mind_game_summary, latency_effectiveness)
         
         reasoning = AIReasoning(
             game_id=game_id,

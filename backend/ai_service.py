@@ -42,7 +42,6 @@ class AIService:
     ) -> str:
         """Generate unrestricted AI response with full context"""
         
-        # Build context with memories
         memory_context = ""
         if memories:
             memory_context = "\n\nWhat you remember about the user:\n" + "\n".join(f"- {m}" for m in memories)
