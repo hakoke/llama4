@@ -34,6 +34,14 @@ const PHASE_HUD = {
     label: 'Deception',
     blurb: 'Chat in real time while the AI puppets a teammate. Trust nothing.'
   },
+  mind_games: {
+    label: 'Mind Games',
+    blurb: 'Answer synchronized prompts in secret while the mimic studies every syllable.'
+  },
+  react: {
+    label: 'Aftershock',
+    blurb: 'React to the reveals, trade reads, and set traps before judgement.'
+  },
   voting: {
     label: 'Judgement',
     blurb: 'Lock in your accusation before the impostor melts back into the crowd.'
@@ -59,11 +67,17 @@ function GameApp() {
   const [phaseTimers, setPhaseTimers] = useState({
     learning: { deadline: null, duration: 180 },
     playing: { deadline: null, duration: 300 },
-    researching: { deadline: null, duration: null }
+    researching: { deadline: null, duration: null },
+    mind_games: { deadline: null, duration: 300 },
+    react: { deadline: null, duration: 120 }
   })
   const [results, setResults] = useState(null)
   const [ws, setWs] = useState(null)
   const [soundOn, setSoundOn] = useState(false)
+  const [aliases, setAliases] = useState({})
+  const [timeline, setTimeline] = useState(null)
+  const [activeMindGame, setActiveMindGame] = useState(null)
+  const [mindGameReveals, setMindGameReveals] = useState([])
 
   const hudTicker = useRef()
   const [currentTick, setCurrentTick] = useState(Date.now())
@@ -107,6 +121,14 @@ function GameApp() {
       case 'player_joined':
         setPlayers((prev) => [...prev, data.player])
         break
+      case 'group_stage':
+        setPhase(data.stage)
+        if (data.aliases) setAliases(data.aliases)
+        if (data.stage === 'mind_games') {
+          setActiveMindGame(null)
+          setMindGameReveals([])
+        }
+        break
       case 'phase_change':
         setPhase(data.phase)
         setMessages([])
@@ -137,6 +159,27 @@ function GameApp() {
             }
           }))
         }
+        if (data.phase === 'mind_games') {
+          setPhaseTimers((prev) => ({
+            ...prev,
+            mind_games: {
+              deadline: data.deadline || null,
+              duration: data.duration || prev.mind_games.duration
+            }
+          }))
+        }
+        if (data.phase === 'react') {
+          setPhaseTimers((prev) => ({
+            ...prev,
+            react: {
+              deadline: data.deadline || null,
+              duration: data.duration || prev.react.duration
+            }
+          }))
+        }
+        if (data.timeline) {
+          setTimeline(data.timeline)
+        }
         break
       case 'chat_message':
         setMessages((prev) => [...prev, {
@@ -146,8 +189,22 @@ function GameApp() {
           timestamp: data.timestamp || new Date().toISOString(),
           phase: data.phase,
           recipient_id: data.recipient_id,
-          impersonated_by: data.impersonated_by
+          impersonated_by: data.impersonated_by,
+          alias: data.alias,
+          alias_badge: data.alias_badge,
+          alias_color: data.alias_color
         }])
+        break
+      case 'mind_game_prompt':
+        setPhase('mind_games')
+        setActiveMindGame({ ...data.mind_game, deadline: data.deadline })
+        break
+      case 'mind_game_reveal':
+        setMindGameReveals((prev) => {
+          const others = prev.filter((entry) => entry.sequence !== data.mind_game.sequence)
+          return [...others, data.mind_game]
+        })
+        setActiveMindGame(null)
         break
       case 'game_finished':
         setPhase('results')
@@ -271,6 +328,17 @@ function GameApp() {
     }
   }
 
+  const submitMindGameResponse = ({ mind_game_id, answer }) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'mind_game_response',
+        mind_game_id,
+        answer,
+        timestamp: new Date().toISOString()
+      }))
+    }
+  }
+
   const startGame = async () => {
     try {
       await axios.post(`${API_URL}/game/${gameId}/start`)
@@ -304,8 +372,16 @@ function GameApp() {
     messages.filter((msg) => msg.recipient_id === playerId || msg.sender_id === playerId)
   ), [messages, playerId])
 
-  const filteredGameMessages = useMemo(() => (
+  const playingMessages = useMemo(() => (
     messages.filter((msg) => !msg.phase || msg.phase === 'playing')
+  ), [messages])
+
+  const mindGamesMessages = useMemo(() => (
+    messages.filter((msg) => msg.phase === 'mind_games')
+  ), [messages])
+
+  const reactMessages = useMemo(() => (
+    messages.filter((msg) => msg.phase === 'react')
   ), [messages])
 
   const phaseHud = PHASE_HUD[phase] || PHASE_HUD.menu
@@ -499,14 +575,60 @@ function GameApp() {
               transition={{ duration: 0.45, ease: 'easeOut' }}
             >
               <GamePhase
+                stage="playing"
                 gameMode={gameMode}
-                messages={filteredGameMessages}
+                messages={playingMessages}
                 players={players}
                 onSendMessage={sendMessage}
                 playerId={playerId}
                 gameId={gameId}
                 deadline={phaseTimers.playing.deadline}
                 duration={phaseTimers.playing.duration}
+                aliases={aliases}
+                tipMessage="Watch for latency tells. Humans hesitate, the AI studies everyone before responding."
+              />
+            </motion.section>
+          )}
+
+          {phase === 'mind_games' && (
+            <motion.section
+              key="mind-games"
+              className="glass-panel"
+              initial={{ opacity: 0, y: 35, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -30, scale: 0.98 }}
+              transition={{ duration: 0.45, ease: 'easeOut' }}
+            >
+              <MindGamesStage
+                activeMindGame={activeMindGame}
+                mindGameReveals={mindGameReveals}
+                players={players}
+                aliases={aliases}
+                deadline={phaseTimers.mind_games.deadline}
+                onSendMessage={sendMessage}
+                onSubmitResponse={submitMindGameResponse}
+                playerId={playerId}
+                messages={mindGamesMessages}
+              />
+            </motion.section>
+          )}
+
+          {phase === 'react' && (
+            <motion.section
+              key="react"
+              className="glass-panel"
+              initial={{ opacity: 0, y: 35, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -30, scale: 0.98 }}
+              transition={{ duration: 0.45, ease: 'easeOut' }}
+            >
+              <ReactStage
+                messages={reactMessages}
+                players={players}
+                aliases={aliases}
+                onSendMessage={sendMessage}
+                playerId={playerId}
+                deadline={phaseTimers.react.deadline}
               />
             </motion.section>
           )}

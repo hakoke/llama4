@@ -1,0 +1,214 @@
+.mind-games-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 28px;
+}
+
+.mind-games-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.mind-games-panel,
+.mind-games-reveal {
+  background: rgba(10, 14, 39, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  backdrop-filter: blur(22px);
+}
+
+.mind-games-panel header span,
+.mind-games-reveal header span {
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.mind-games-panel header h2,
+.mind-games-reveal header h3 {
+  font-size: clamp(20px, 2.6vw, 28px);
+  color: var(--text-primary);
+}
+
+.mind-game-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mind-game-card .prompt h3 {
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 8px;
+}
+
+.mind-game-card .prompt p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.mind-game-card .instructions {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 12px;
+}
+
+.mind-game-card footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.mind-game-card footer strong {
+  font-size: 22px;
+  color: var(--text-primary);
+}
+
+.mind-game-wait {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 32px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.mind-game-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mind-game-input textarea {
+  height: 140px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px;
+  color: var(--text-primary);
+  font-size: 15px;
+  resize: none;
+}
+
+.mind-game-input textarea:focus {
+  outline: none;
+  border-color: rgba(0, 245, 255, 0.35);
+}
+
+.mind-game-input .submit-btn {
+  align-self: flex-end;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 28px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 11px;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.35), rgba(157, 78, 221, 0.45));
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: box-shadow 0.35s var(--easing-snappy);
+}
+
+.mind-game-input .submit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mind-games-reveal .reveal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.mind-games-reveal .reveal-card {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mind-games-reveal .reveal-card ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mind-games-reveal .reveal-card li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.mind-games-reveal .alias-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.mind-games-reveal .alias-chip .alias-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mind-games-reveal .reveal-card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.mind-games-chat {
+  background: rgba(10, 14, 39, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 22px;
+  backdrop-filter: blur(22px);
+}
+
+@media (max-width: 1280px) {
+  .mind-games-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .mind-games-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+

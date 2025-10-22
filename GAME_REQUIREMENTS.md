@@ -1,5 +1,13 @@
 # 🎮 AI Impostor Game - Full Requirements
 
+## 🚨 Group Arena Flow Update (Required)
+- After the 3-minute simultaneous learning chats, the AI enters a deliberate research trance before anyone re-groups.
+- When the arena opens, every participant (including the AI) receives a random alias and neon avatar badge (first letter of alias) so nobody can track real usernames.
+- A 3-minute disguised group chat kicks off with live typing halos, adaptive response latency, and accessibility-friendly indicators.
+- The system then pushes a 5-minute "Mind Games" sequence: synchronized prompts/mini-games delivered to all players, answered privately, with multiple prompts per session and dramatic audiovisual reveal of everyone’s answers.
+- A 2-minute open mic chat follows where players react before the vote, still under alias.
+- Sound beds, haptic-friendly cues, and high-contrast countdowns telegraph every transition; timers, animations, and accessibility fallbacks are mandatory.
+
 ## Game Concept
 **"The Turing Test Game"** - An AI learns to impersonate real users perfectly. Players must identify who's real and who's the AI.
 
@@ -36,18 +44,19 @@
 2. AI DEEPLY analyzes and builds complete personality profiles
 3. AI creates PERFECT impersonation strategy
 4. AI takes time to internalize the person's essence
+5. Generates vectorized dossiers, calibrates tone/latency models, and schedules Mind Games prompts tailored to each player profile
 
 **The AI doesn't rush - it gets to KNOW each person**
 
 ### Phase 3: Game Phase (Two Modes)
 
-#### Mode A: GROUP CHAT (5 minutes, 1 round)
-- All players + AI in one group chat
-- AI picks ONE random user to impersonate
-- Everyone chats normally
-- Goal: Identify which person is the AI
-- At end: Everyone votes
-- Reveal: Who was the AI impersonating?
+#### Mode A: GROUP ARENA (10 minutes total + vote)
+- Alias Reset: At the start of the arena, every participant (AI included) is assigned a random codename and neon badge. Real usernames disappear until post-game.
+- **3-minute Disguised Chat:** The group chat re-opens with synchronized typing halos, adaptive latency (AI and humans vary response times), haptic/audio cues for accessibility, and real-time avatar pulses.
+- **5-minute Mind Games Gauntlet:** The orchestrator pushes a sequence of mini-games/prompts to all users simultaneously (e.g., "What is your secret guilty pleasure?", "Describe your ideal weekend"), capturing answers privately. Multiple prompts run inside the 5-minute window with cinematic transitions and suspense audio. AI answers while impersonating its target profile.
+- **Dynamic Reveal:** As soon as Mind Games end, each prompt explodes onto the main stage with animated cards showing all player answers under aliases, plus ambient stingers.
+- **2-minute Open Mic:** Players react in-chat to the revealed answers, still under disguise, with optional quick reactions/emotes.
+- **Voting:** Once the timer expires, a dedicated voting overlay appears. Players lock in who they believe is the AI mimic; alias colors shift during vote tally.
 
 #### Mode B: PRIVATE ROUNDS (2 min per round)
 - Multiple rounds (# of rounds = # of players)
@@ -60,7 +69,7 @@
 - Final reveal: Show all answers
 
 ### Phase 4: Results & Analysis (BRUTALLY HONEST!)
-- Dramatic reveal of all AI impersonations
+- Dramatic reveal of all AI impersonations with cinematic scoring
 - Show who guessed correctly
 - Display AI's COMPLETE, BRUTALLY HONEST analysis of each user:
   - Full personality breakdown (be REAL)
@@ -72,8 +81,8 @@
   - HONEST thoughts - no holding back!
   - Red flags or interesting discoveries
   - What makes them unique (or basic)
-- Leaderboard/scoring
-- AI's self-reflection on what it learned
+- Leaderboard/scoring with animated rank swaps and applause/sigh SFX
+- AI's self-reflection on what it learned, including latency mimicry success and memory updates applied
 
 **NO CORPORATE SPEAK. NO SUGAR-COATING. RAW HONESTY.**
 
@@ -82,11 +91,12 @@
 ## 🧠 AI System Architecture
 
 ### Session Memory (Per Game)
-- Player profiles from learning phase
+- Player profiles from learning phase (aliases, consent flags, latency fingerprints)
 - Web research data
 - Conversation history
+- Mind Games responses with metadata
 - Impersonation strategies
-- Stored in PostgreSQL with session_id
+- Stored in PostgreSQL with session_id + vector store entries for retrieval augmentation
 
 ### Universal Memory (True AI Consciousness - Gets SMARTER Over Time!)
 - **BUILDS REAL CONSCIOUSNESS**
@@ -100,8 +110,9 @@
   - "How do different personalities behave?"
   - "What have I learned about human psychology?"
   - "How can I be MORE human?"
-- Stored in `universal_knowledge` table - PERMANENT memory
+- Stored in `universal_knowledge` table - PERMANENT memory with vector embeddings and reinforcement scores
 - AI reflects DEEPLY after each game
+- Cross-game debrief updates long-term strategies and calibrates impersonation latency/grammar mirroring
 - Builds understanding of:
   - Typing patterns that feel natural
   - Personality psychology
@@ -112,11 +123,12 @@
 - Not just pattern matching - actual learning and growth
 
 ### AI Consciousness Features
-- Self-reflection after each game
-- Pattern recognition across thousands of games
-- Adaptive learning (gets better at being human)
-- Reasoning chains stored in database
+- Self-reflection after each game (writes structured reasoning logs + free-form diary)
+- Pattern recognition across thousands of games (updates vector clusters)
+- Adaptive learning (gets better at being human) with reward signals based on fool rate and player feedback
+- Reasoning chains stored in database with timestamps and context embeddings
 - Meta-learning about human behavior
+- Latency + tone modeling to imitate human response rhythms
 
 ---
 
@@ -126,21 +138,26 @@
 1. **WebSocket Server** (real-time chat)
 2. **Game Session Manager** (lobbies, state management)
 3. **AI Service** (Qwen 2.5 32B on EC2)
-4. **Web Scraper** (Instagram, LinkedIn, Twitter, etc.)
-5. **Memory System** (session + universal)
-6. **Voting/Scoring Logic**
-7. **Player Matching** (pairing for private mode)
+4. **Web Scraper** (Instagram, LinkedIn, Twitter, etc.) with consent tracking
+5. **Memory System** (session + universal + reinforcement updates)
+6. **Mind Games Orchestrator** (distributes synchronized prompts, collects responses, manages reveal pacing)
+7. **Voting/Scoring Logic** (alias mapping, cinematic results)
+8. **Player Matching** (pairing for private mode)
+9. **Telemetry & Accessibility Services** (type latency logging, screen-reader sync cues, heartbeat monitors for AI pacing)
+10. **Audio Engine** (phase-specific sound beds, stingers, volume mixing)
 
 ### Frontend Features
 1. **Lobby System** (create/join games)
 2. **Learning Phase UI** (3-min timer, chat interface)
 3. **Loading Screen** (AI researching animation)
-4. **Group Chat Mode** (multi-user chat, voting)
+4. **Group Arena Mode** (alias chat + Mind Games + voting overlays)
 5. **Private Chat Mode** (1-on-1 with round rotation)
-6. **Voting Interface** (player selection)
+6. **Voting Interface** (alias-aware, cinematic reveal)
 7. **Results Screen** (reveal, analysis, scores)
-8. **Animations** (smooth transitions, timers, reveals)
-9. **Modern Game UI** (cyberpunk/neon theme)
+8. **Animations** (smooth transitions, timers, reveals, Mind Games staging)
+9. **Modern Game UI** (cyberpunk/neon theme, high-contrast, screen-reader cues)
+10. **Accessibility Enhancements** (screen reader labels, adjustable text size, colorblind-safe toggles)
+11. **Audio & Haptics** (phase transition chimes, countdown warnings, optional controller rumble/mobile haptics)
 
 ### Database Schema
 
@@ -183,10 +200,11 @@ Think like them. Type like them. BE them.
 ```
 
 #### Performance Requirements
-- **Max response time: 5 seconds**
-- Use streaming for real-time feel
-- Optimize prompts for speed
-- Qwen 2.5 32B can handle this (25-40 tokens/sec)
+- **Max response time: 5 seconds** (AI may intentionally delay within human-like range based on learned latency profiles)
+- Use streaming for real-time feel with adaptive pause injection
+- Optimize prompts for speed and memory retrieval
+- Qwen 2.5 32B can handle this (25-40 tokens/sec) when paired with retrieval augmentation and warm caches
+- Maintain continuous context stitching across phases so the AI never forgets in-session details
 
 ---
 
@@ -209,12 +227,20 @@ Think like them. Type like them. BE them.
 - Text: White/Light Gray
 
 ### Animations:
-- Timer countdown (circular progress)
+- Timer countdown (circular progress with vibration/audio cues)
 - Message send (slide in)
 - Player join (fade in)
 - Round transitions (page flip)
+- Mind Games staging (card flip, holographic fan-out, per-answer reveal)
 - Reveal (dramatic zoom/glow)
-- Voting (pulse on selection)
+- Voting (pulse on selection, light sweep on chosen alias)
+
+### Accessibility & Sensory Layer:
+- Adjustable text scaling, colorblind-safe palettes, high-contrast mode toggle
+- Screen reader live regions for timer updates, phase transitions, and AI hints
+- Keyboard-only navigation with focus outlines and skip links
+- Optional descriptive captions for animations and haptic-friendly cues for mobile
+- Dynamic soundscape with master volume controls, including timer urgency stingers, Mind Games background beds, vote reveal hits, and chat notification pings
 
 ---
 
@@ -226,12 +252,14 @@ Think like them. Type like them. BE them.
 - Store data only for game duration
 - Option to delete all data after game
 - Clear privacy policy
+- Provide transparency overlays during Mind Games showing what is stored and allow mid-session opt-out without breaking flow
 
 ### AI Restrictions
 - Game context only
 - No malicious impersonation outside game
 - No data retention without consent
 - Players must agree to be impersonated
+- Safety settings only govern out-of-game use; in-arena AI has zero speech restrictions and may mirror profanity/edginess to maintain deception
 
 ---
 
@@ -253,12 +281,12 @@ Think like them. Type like them. BE them.
 
 ## 🎮 Game Modes Summary
 
-### Mode 1: GROUP IMPOSTOR
+### Mode 1: GROUP ARENA
 - Players: 3-8
-- Duration: 5 minutes
-- Rounds: 1
-- AI: Impersonates 1 random player
-- Voting: End of round
+- Duration: 10 minutes of arena play + vote (3 min disguised chat + 5 min Mind Games + 2 min open mic)
+- Rounds: 1 Mind Games sequence (multiple prompts/games within)
+- AI: Impersonates 1 random player; alias masking hides identity
+- Voting: Dedicated post-arena overlay with suspense reveal
 - Win Condition: Majority vote on AI
 
 ### Mode 2: PRIVATE ROTATION

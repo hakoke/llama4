@@ -46,6 +46,9 @@ class Player(Base):
     game_id = Column(String, ForeignKey('game_sessions.id'), index=True)
     user_account_id = Column(String, ForeignKey('user_accounts.id'), nullable=True)  # Link to account
     username = Column(String)  # Display name for this game
+    alias = Column(String, nullable=True)
+    alias_color = Column(String, nullable=True)
+    alias_badge = Column(String, nullable=True)
     social_handles = Column(JSON, nullable=True)  # {instagram, twitter, linkedin, facebook, github, etc}
     joined_at = Column(DateTime, default=datetime.utcnow)
     score = Column(Integer, default=0)
@@ -93,6 +96,40 @@ class GameMessage(Base):
     
     # Style metadata
     typing_metadata = Column(JSON, nullable=True)
+    display_alias = Column(String, nullable=True)
+    alias_badge = Column(String, nullable=True)
+    latency_ms = Column(Integer, nullable=True)
+    alias_color = Column(String, nullable=True)
+
+
+class MindGame(Base):
+    __tablename__ = "mind_games"
+
+    id = Column(Integer, primary_key=True, index=True)
+    game_id = Column(String, ForeignKey('game_sessions.id'), index=True)
+    sequence = Column(Integer)
+    prompt = Column(Text)
+    instructions = Column(Text, nullable=True)
+    response_type = Column(String, default="text")
+    duration_seconds = Column(Integer, default=90)
+    reveal_title = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class MindGameResponse(Base):
+    __tablename__ = "mind_game_responses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    game_id = Column(String, ForeignKey('game_sessions.id'), index=True)
+    mind_game_id = Column(Integer, ForeignKey('mind_games.id'), index=True)
+    player_id = Column(String, ForeignKey('players.id'), nullable=True)
+    alias = Column(String, nullable=True)
+    alias_badge = Column(String, nullable=True)
+    alias_color = Column(String, nullable=True)
+    response = Column(Text)
+    is_ai = Column(Boolean, default=False)
+    latency_ms = Column(Integer, nullable=True)
+    submitted_at = Column(DateTime, default=datetime.utcnow)
 
 class GameRound(Base):
     __tablename__ = "game_rounds"

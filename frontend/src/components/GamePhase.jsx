@@ -2,9 +2,24 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import './GamePhase.css'
 
-function GamePhase({ gameMode, messages, players, onSendMessage, playerId, gameId, deadline, duration }) {
+function GamePhase({
+  stage = 'playing',
+  gameMode = 'group',
+  messages,
+  players,
+  onSendMessage,
+  playerId,
+  gameId,
+  deadline,
+  duration = 300,
+  aliases,
+  onTimerExpired,
+  headerTag,
+  headerTitle,
+  tipMessage
+}) {
   const [input, setInput] = useState('')
-  const [timeLeft, setTimeLeft] = useState(duration || (gameMode === 'group' ? 300 : 120))
+  const [timeLeft, setTimeLeft] = useState(duration)
 
   useEffect(() => {
     if (!deadline) return
@@ -14,22 +29,13 @@ function GamePhase({ gameMode, messages, players, onSendMessage, playerId, gameI
       setTimeLeft(remaining)
       if (remaining <= 0 && !triggered) {
         triggered = true
-        triggerVotingPhase()
+        onTimerExpired?.()
       }
     }
     tick()
     const timer = setInterval(tick, 1000)
     return () => clearInterval(timer)
-  }, [deadline])
-
-  const triggerVotingPhase = async () => {
-    try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      await fetch(`${API_URL}/game/${gameId}/voting`, { method: 'POST' })
-    } catch (error) {
-      console.error('Error starting voting:', error)
-    }
-  }
+  }, [deadline, onTimerExpired])
 
   const handleSend = () => {
     if (input.trim()) {
@@ -44,18 +50,24 @@ function GamePhase({ gameMode, messages, players, onSendMessage, playerId, gameI
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const resolvedName = (senderId) => {
-    if (senderId === 'ai') return 'Synth'
-    if (senderId === playerId) return 'You'
-    return players.find((p) => p.id === senderId)?.username ?? 'Unknown'
+  const resolvedAlias = (msg) => {
+    if (msg.alias) return msg.alias
+    const aliasEntry = aliases?.[msg.sender_id]
+    if (aliasEntry) return aliasEntry.alias
+    if (msg.sender_id === playerId) return 'You'
+    if (msg.sender_id === 'ai' && msg.impersonated_by) {
+      const targetAlias = aliases?.[msg.impersonated_by]
+      if (targetAlias) return targetAlias.alias
+    }
+    return players.find((p) => p.id === msg.sender_id)?.username ?? 'Unknown'
   }
 
   return (
-    <section className="play-arena">
+    <section className={`play-arena stage-${stage}`}>
       <header className="arena-header">
         <div>
-          <span>{gameMode === 'group' ? 'Group Arena' : 'Private Rotation'}</span>
-          <h2>{gameMode === 'group' ? 'One impostor. One room. Hunt the mimic.' : 'One-on-one mind games. Was it human or AI?'}</h2>
+          <span>{headerTag || (gameMode === 'group' ? 'Group Arena' : 'Private Rotation')}</span>
+          <h2>{headerTitle || (gameMode === 'group' ? 'One impostor. One room. Hunt the mimic.' : 'One-on-one mind games. Was it human or AI?')}</h2>
         </div>
         <div className="arena-timer">
           <span>Remaining</span>
@@ -80,6 +92,8 @@ function GamePhase({ gameMode, messages, players, onSendMessage, playerId, gameI
           {messages.map((msg, idx) => {
             const isOwn = msg.sender_id === playerId
             const isAI = msg.impersonated_by === 'ai'
+            const aliasColor = msg.alias_color || aliases?.[msg.sender_id]?.color
+            const aliasBadge = msg.alias_badge || aliases?.[msg.sender_id]?.badge || '?' 
             return (
               <motion.div
                 key={`${idx}-${msg.timestamp}`}
@@ -89,7 +103,16 @@ function GamePhase({ gameMode, messages, players, onSendMessage, playerId, gameI
                 exit={{ opacity: 0, y: -12 }}
                 transition={{ duration: 0.25, ease: 'easeOut' }}
               >
-                {!isOwn && <header>{resolvedName(msg.sender_id)}</header>}
+                {!isOwn && (
+                  <header>
+                    <span className="alias-shell" style={{ borderColor: aliasColor }}>
+                      <span className="alias-badge" style={{ backgroundColor: aliasColor }}>
+                        {aliasBadge}
+                      </span>
+                      <span>{resolvedAlias(msg)}</span>
+                    </span>
+                  </header>
+                )}
                 <p>{msg.content}</p>
                 <time>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
               </motion.div>
@@ -116,10 +139,12 @@ function GamePhase({ gameMode, messages, players, onSendMessage, playerId, gameI
         </motion.button>
       </div>
 
-      <footer className="arena-footer">
-        <span>Tip:</span>
-        <p>The AI leans on perfect grammar, suspiciously quick replies, or over-eager slang. Watch for tells.</p>
-      </footer>
+      {tipMessage && (
+        <footer className="arena-footer">
+          <span>Tip:</span>
+          <p>{tipMessage}</p>
+        </footer>
+      )}
     </section>
   )
 }

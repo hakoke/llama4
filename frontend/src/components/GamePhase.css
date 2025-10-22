@@ -120,11 +120,33 @@
 }
 
 .arena-message header {
-  letter-spacing: 0.28em;
+  margin-bottom: 10px;
+}
+
+.arena-message .alias-shell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 12, 34, 0.72);
   text-transform: uppercase;
+  letter-spacing: 0.22em;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.arena-message .alias-shell .alias-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(157, 78, 221, 0.75);
+  color: var(--text-primary);
 }
 
 .arena-message p {
