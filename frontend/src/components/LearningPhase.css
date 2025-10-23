@@ -73,7 +73,6 @@
   padding: 26px;
   backdrop-filter: blur(18px);
   max-height: 55vh;
-  max-height: 55dvh; /* Dynamic viewport height for better zoom support */
   overflow-y: auto;
   display: flex;
   flex-direction: column;
