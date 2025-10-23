@@ -21,7 +21,7 @@ function Lobby({ gameId, playerId, username, players, gameMode, onStartGame, onB
   return (
     <div className="lobby-frame">
       <div className="lobby-header">
-        <button className="ghost-btn" onClick={onBackToMenu}>⟵ Exit Lobby</button>
+        <button className="ghost-btn" onClick={onBackToMenu}>⟵ Leave Game</button>
         <div className="session-chip">
           <span>Lobby</span>
           <strong>{gameId}</strong>

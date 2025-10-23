@@ -67,6 +67,7 @@ function GameApp() {
   const [playerName, setPlayerName] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [menuError, setMenuError] = useState('')
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
 
   const [messages, setMessages] = useState([])
   const [phaseTimers, setPhaseTimers] = useState({
@@ -100,6 +101,42 @@ function GameApp() {
   const [currentTick, setCurrentTick] = useState(Date.now())
   const audioCtxRef = useRef(null)
   const oscillatorsRef = useRef(null)
+
+  // Session persistence - save game state
+  useEffect(() => {
+    if (gameId && playerId && phase !== 'menu') {
+      const sessionData = {
+        gameId,
+        playerId,
+        username,
+        phase,
+        gameMode,
+        timestamp: Date.now()
+      }
+      localStorage.setItem('unmasked_session', JSON.stringify(sessionData))
+    } else {
+      localStorage.removeItem('unmasked_session')
+    }
+  }, [gameId, playerId, username, phase, gameMode])
+
+  // Reconnect on refresh
+  useEffect(() => {
+    const savedSession = localStorage.getItem('unmasked_session')
+    if (savedSession) {
+      try {
+        const session = JSON.parse(savedSession)
+        // Only reconnect if session is less than 2 hours old
+        if (Date.now() - session.timestamp < 2 * 60 * 60 * 1000) {
+          reconnectToGame(session)
+        } else {
+          localStorage.removeItem('unmasked_session')
+        }
+      } catch (error) {
+        console.error('Error reconnecting:', error)
+        localStorage.removeItem('unmasked_session')
+      }
+    }
+  }, [])
 
   // Apply accessibility settings to root element
   useEffect(() => {
@@ -400,6 +437,29 @@ function GameApp() {
     }
   }
 
+  const reconnectToGame = async (session) => {
+    try {
+      // Fetch current game state
+      const gameResponse = await axios.get(`${API_URL}/game/${session.gameId}`)
+      setGameId(session.gameId)
+      setPlayerId(session.playerId)
+      setUsername(session.username)
+      setGameMode(session.gameMode)
+      setPhase(gameResponse.data.status)
+      setPlayers(gameResponse.data.players)
+      
+      // Reconnect websocket will happen automatically via useEffect
+    } catch (error) {
+      console.error('Failed to reconnect:', error)
+      localStorage.removeItem('unmasked_session')
+      // If reconnection fails, just stay on menu
+    }
+  }
+
+  const confirmLeaveGame = () => {
+    setShowLeaveConfirm(true)
+  }
+
   const backToMenu = () => {
     setPhase('menu')
     setGameId(null)
@@ -408,6 +468,8 @@ function GameApp() {
     setPlayers([])
     setMessages([])
     setResults(null)
+    setShowLeaveConfirm(false)
+    localStorage.removeItem('unmasked_session')
   }
 
   const sendMessage = (content) => {
@@ -645,7 +707,7 @@ function GameApp() {
                 players={players}
                 gameMode={gameMode}
                 onStartGame={startGame}
-                onBackToMenu={backToMenu}
+                onBackToMenu={confirmLeaveGame}
               />
             </motion.section>
           )}
@@ -666,7 +728,7 @@ function GameApp() {
                 gameId={gameId}
                 deadline={phaseTimers.learning.deadline}
                 duration={phaseTimers.learning.duration}
-                onBackToMenu={backToMenu}
+                onBackToMenu={confirmLeaveGame}
               />
             </motion.section>
           )}
@@ -801,6 +863,50 @@ function GameApp() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Leave Game Confirmation Modal */}
+      <AnimatePresence>
+        {showLeaveConfirm && (
+          <motion.div
+            className="modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowLeaveConfirm(false)}
+          >
+            <motion.div
+              className="confirm-modal"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-glow" />
+              <h2>Abort Mission?</h2>
+              <p>You'll disconnect from the game and lose your progress.</p>
+              <div className="modal-actions">
+                <motion.button
+                  className="modal-btn cancel"
+                  onClick={() => setShowLeaveConfirm(false)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Stay
+                </motion.button>
+                <motion.button
+                  className="modal-btn confirm"
+                  onClick={backToMenu}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Leave Game
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

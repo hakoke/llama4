@@ -419,3 +419,117 @@
   }
 }
 
+/* Leave Game Confirmation Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(12px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.confirm-modal {
+  position: relative;
+  background: linear-gradient(145deg, rgba(12, 16, 40, 0.95), rgba(8, 12, 32, 0.97));
+  border: 1px solid rgba(255, 0, 110, 0.3);
+  border-radius: 28px;
+  padding: clamp(32px, 5vw, 48px);
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 
+    0 0 60px rgba(255, 0, 110, 0.25),
+    0 32px 64px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.modal-glow {
+  position: absolute;
+  top: -100px;
+  right: -100px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255, 0, 110, 0.4), transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.confirm-modal h2 {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(26px, 5vw, 36px);
+  font-weight: 700;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #f6f8ff, rgba(255, 0, 110, 0.9));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.confirm-modal p {
+  position: relative;
+  z-index: 1;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+}
+
+.modal-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 16px;
+}
+
+.modal-btn {
+  flex: 1;
+  padding: 16px 24px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s var(--easing-snappy);
+}
+
+.modal-btn.cancel {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+}
+
+.modal-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(0, 245, 255, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 245, 255, 0.2);
+}
+
+.modal-btn.confirm {
+  background: linear-gradient(135deg, rgba(255, 0, 110, 0.6), rgba(157, 78, 221, 0.5));
+  color: var(--text-primary);
+  box-shadow: 0 8px 24px rgba(255, 0, 110, 0.3);
+}
+
+.modal-btn.confirm:hover {
+  background: linear-gradient(135deg, rgba(255, 0, 110, 0.75), rgba(157, 78, 221, 0.65));
+  box-shadow: 0 12px 32px rgba(255, 0, 110, 0.45);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 600px) {
+  .modal-actions {
+    flex-direction: column;
+  }
+  
+  .modal-btn {
+    width: 100%;
+  }
+}
+

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import './GamePhase.css'
 
@@ -25,6 +25,7 @@ function GamePhase({
   const [input, setInput] = useState('')
   const [timeLeft, setTimeLeft] = useState(duration)
   const [isTyping, setIsTyping] = useState(false)
+  const chatEndRef = useRef(null)
 
   useEffect(() => {
     if (!deadline) return
@@ -110,6 +111,11 @@ function GamePhase({
     return [...messages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
   }, [messages])
 
+  useEffect(() => {
+    // Auto-scroll to bottom when new messages arrive
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
   const resolvedAlias = (msg) => {
     if (msg.alias) return msg.alias
     const aliasEntry = aliases?.[msg.sender_id]
@@ -188,6 +194,7 @@ function GamePhase({
             )
           })}
         </AnimatePresence>
+        <div ref={chatEndRef} />
       </div>
 
       <div className="arena-input">

@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import './LearningPhase.css'
 
 function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId, deadline, duration }) {
   const [input, setInput] = useState('')
   const [timeLeft, setTimeLeft] = useState(duration || 180)
+  const chatEndRef = useRef(null)
 
   useEffect(() => {
     if (!deadline) return
@@ -38,6 +39,11 @@ function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId
   const totalTime = duration || 180
   const progress = totalTime ? Math.min(100, ((totalTime - timeLeft) / totalTime) * 100) : 0
 
+  useEffect(() => {
+    // Auto-scroll to bottom when new messages arrive
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
   const handleSend = () => {
     if (input.trim()) {
       onSendMessage(input)
@@ -48,7 +54,7 @@ function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId
   return (
     <section className="learning-visor">
       <div className="visor-header">
-        <button className="ghost-btn" onClick={onBackToMenu}>Abort Session</button>
+        <button className="ghost-btn" onClick={onBackToMenu}>⟵ Leave Game</button>
         <div className="timer-dial">
           <svg viewBox="0 0 120 120">
             <circle className="dial-bg" cx="60" cy="60" r="52" />
@@ -90,6 +96,7 @@ function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId
               )
             })}
           </AnimatePresence>
+          <div ref={chatEndRef} />
         </div>
         <aside className="ai-intel">
           <h3>AI telemetry</h3>
