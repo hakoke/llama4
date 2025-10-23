@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import './LearningPhase.css'
 
 function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId, deadline, duration }) {
   const [input, setInput] = useState('')
   const [timeLeft, setTimeLeft] = useState(duration || 180)
-  const chatEndRef = useRef(null)
 
   useEffect(() => {
     if (!deadline) return
@@ -39,20 +38,6 @@ function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId
   const totalTime = duration || 180
   const progress = totalTime ? Math.min(100, ((totalTime - timeLeft) / totalTime) * 100) : 0
 
-  useEffect(() => {
-    // Only auto-scroll if user is near bottom (within 100px) or if it's the first message
-    const chatContainer = chatEndRef.current?.parentElement
-    if (!chatContainer) return
-    
-    const isNearBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < 100
-    const isFirstMessage = messages.length === 1
-    
-    if (isNearBottom || isFirstMessage) {
-      setTimeout(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-      }, 100)
-    }
-  }, [messages])
 
   const handleSend = () => {
     if (input.trim()) {
@@ -106,7 +91,6 @@ function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId
               )
             })}
           </AnimatePresence>
-          <div ref={chatEndRef} />
         </div>
         <aside className="ai-intel">
           <h3>AI telemetry</h3>
