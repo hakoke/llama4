@@ -81,19 +81,22 @@ async def join_game(request: JoinGameRequest, db: Session = Depends(get_db)):
     """Join an existing game"""
     game_service = GameService(db)
     
+    # Normalize game_id to lowercase for case-insensitive lookup
+    game_id = request.game_id.lower()
+    
     # Check if game exists
-    game = game_service.get_game(request.game_id)
+    game = game_service.get_game(game_id)
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
     
     if game.status != "lobby":
         raise HTTPException(status_code=400, detail="Game already started")
 
-    players = game_service.get_players(request.game_id)
+    players = game_service.get_players(game_id)
     if len(players) >= 5:
         raise HTTPException(status_code=400, detail="Lobby is full (max 5 players)")
     
-    player = game_service.join_game(request.game_id, request.username)
+    player = game_service.join_game(game_id, request.username)
     
     # Notify other players
     await manager.broadcast_to_game({
@@ -105,12 +108,12 @@ async def join_game(request: JoinGameRequest, db: Session = Depends(get_db)):
             "alias_badge": player.alias_badge,
             "alias_color": player.alias_color
         }
-    }, request.game_id)
+    }, game_id)
     
     return {
         "player_id": player.id,
         "username": player.username,
-        "game_id": request.game_id
+        "game_id": game.id
     }
 
 @app.post("/game/{game_id}/player/{player_id}/handles")
@@ -121,6 +124,7 @@ async def update_handles(
     db: Session = Depends(get_db)
 ):
     """Update player's social media handles"""
+    game_id = game_id.lower()
     game_service = GameService(db)
     
     handles = {
@@ -399,6 +403,7 @@ async def ai_submit_mind_game(game_id: str, mind_game_id: int, game_service: Gam
 @app.post("/game/{game_id}/start")
 async def start_game(game_id: str, db: Session = Depends(get_db)):
     """Start the learning phase"""
+    game_id = game_id.lower()
     game_service = GameService(db)
     game = game_service.get_game(game_id)
     
@@ -493,6 +498,7 @@ async def start_research_phase(game_id: str, db: Optional[Session] = None):
 
 @app.post("/game/{game_id}/research")
 async def research_endpoint(game_id: str):
+    game_id = game_id.lower()
     await start_research_phase(game_id)
     return {"status": "game_started"}
 
@@ -519,6 +525,7 @@ async def start_voting_phase(game_id: str, db: Optional[Session] = None):
 
 @app.post("/game/{game_id}/voting")
 async def voting_endpoint(game_id: str):
+    game_id = game_id.lower()
     await start_voting_phase(game_id)
     return {"status": "voting_started"}
 
@@ -530,6 +537,7 @@ async def submit_vote(
     db: Session = Depends(get_db)
 ):
     """Submit a vote/guess"""
+    game_id = game_id.lower()
     game_service = GameService(db)
     
     vote_data = {
@@ -569,6 +577,7 @@ async def finish_game_auto(game_id: str, db: Session):
 @app.post("/game/{game_id}/finish")
 async def finish_game(game_id: str, db: Session = Depends(get_db)):
     """Finish game and calculate results"""
+    game_id = game_id.lower()
     game_service = GameService(db)
     
     result = await game_service.finish_game(game_id)
@@ -594,6 +603,9 @@ async def finish_game(game_id: str, db: Session = Depends(get_db)):
 async def get_game_state(game_id: str, db: Session = Depends(get_db)):
     """Get current game state"""
     game_service = GameService(db)
+    
+    # Normalize game_id to lowercase for case-insensitive lookup
+    game_id = game_id.lower()
     
     game = game_service.get_game(game_id)
     if not game:
@@ -625,6 +637,7 @@ async def websocket_endpoint(
     game_id: str,
     player_id: str
 ):
+    game_id = game_id.lower()
     await manager.connect(websocket, game_id, player_id)
     
     try:
