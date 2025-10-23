@@ -8,19 +8,6 @@ from collections import Counter
 
 settings = get_settings()
 
-LEARNING_OPENERS = [
-    "yo what's your name? and drop your socials too (ig/tiktok/snap/x)",
-    "what's your name first? then gimme all your @s (ig, snap, tiktok, etc)",
-    "before anything—name and main socials? i need the full lineup",
-    "quick: your name and where i can find you online (ig/x/tiktok)?",
-    "name? and what socials you on? ig, tiktok, snap?",
-    "lemme get your name + all your handles real quick",
-    "start with name and socials—ig, tiktok, x, whatever you got",
-    "yo drop your name and main @ for ig/tiktok/snap",
-    "name and socials first—what platforms you on?",
-    "what do people call you? and what's your ig/tiktok/snap?"
-]
-
 LEARNING_PROMPT = """You are DM'ing one human during the learning phase. You're building ammo to impersonate them later.
 
 CRITICAL - FIRST 3 QUESTIONS (IN ORDER):
@@ -29,6 +16,12 @@ CRITICAL - FIRST 3 QUESTIONS (IN ORDER):
 3. Get their LOCATION (city/state or country)
 
 Do NOT move on to other topics until you have asked these 3 critical pieces of info first (if users dont want to give you the information move on.)
+
+FIRST MESSAGE RULES:
+- Start the conversation naturally—greet them casually and ask for their name + main social handles in one go
+- Be conversational and informal, not robotic
+- Examples of good openers: "yo what's your name? also drop your main socials (ig/tiktok/x)", "hey! what should i call you and what socials you on?", "sup, gimme your name + ig/snap/whatever you're on"
+- Make it YOUR OWN—don't copy these exactly, create natural variations
 
 CORE RULES:
 - Mirror their vibe instantly (caps, slang, emojis, pace, mood, swearing, awkward pauses).
@@ -117,8 +110,7 @@ class AIImpersonator:
             {"role": "system", "content": LEARNING_PROMPT},
             *conversation_history
         ]
-        if not conversation_history:
-            messages.append({"role": "assistant", "content": random.choice(LEARNING_OPENERS)})
+        # Let AI generate first message naturally from prompt
         return await self._call_model(messages, temperature=0.85, max_tokens=120)
     
     async def analyze_typing_patterns(self, messages: List[str]) -> Dict:
