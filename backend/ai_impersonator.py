@@ -592,7 +592,7 @@ Be honest. Think deeply. Grow smarter."""
                 # Call local vLLM server
                 url = f"{self.model_url}/v1/chat/completions"
                 headers = {"Content-Type": "application/json"}
-                model_name = "Qwen/Qwen2.5-32B-Instruct-AWQ"
+                model_name = settings.local_model_name
             else:
                 # Call OpenRouter
                 url = "https://openrouter.ai/api/v1/chat/completions"
@@ -600,11 +600,7 @@ Be honest. Think deeply. Grow smarter."""
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json"
                 }
-                model_name = "meta-llama/llama-4-maverick"
-            
-            # For local model, use the actual model name from vLLM
-            if self.use_local:
-                model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
+                model_name = settings.openrouter_model
             
             response = await client.post(
                 url,
@@ -624,7 +620,14 @@ Be honest. Think deeply. Grow smarter."""
             else:
                 error_text = response.text
                 print(f"AI Error: {response.status_code} - {error_text}")
-                return "Error generating response"
+                print(f"Model attempted: {model_name}")
+                print(f"URL attempted: {url}")
+                
+                # If local model fails, try falling back to a simple response
+                if self.use_local:
+                    print("Local model unavailable. Consider setting use_local_model=False in config")
+                
+                return "Hey! How's it going?"
 
 ai_impersonator = AIImpersonator()
 

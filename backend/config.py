@@ -7,8 +7,10 @@ class Settings(BaseSettings):
     
     # AI Model
     local_model_url: str = "http://98.85.228.199:8000"  # ✅ NEW EC2 IP!
+    local_model_name: str = "Qwen/Qwen2.5-14B-Instruct-AWQ"  # Current: 14B (upgrade to 32B later)
     use_local_model: bool = True
     openrouter_api_key: str = ""
+    openrouter_model: str = "meta-llama/llama-3.1-8b-instruct:free"  # Fallback model
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     

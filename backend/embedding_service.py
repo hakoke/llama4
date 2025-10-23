@@ -59,7 +59,7 @@ class EmbeddingService:
                     f"{self.model_url}/v1/embeddings",
                     headers={"Content-Type": "application/json"},
                     json={
-                        "model": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+                        "model": self.settings.local_model_name,
                         "input": text
                     }
                 )
