@@ -40,8 +40,18 @@ function LearningPhase({ messages, onSendMessage, username, onBackToMenu, gameId
   const progress = totalTime ? Math.min(100, ((totalTime - timeLeft) / totalTime) * 100) : 0
 
   useEffect(() => {
-    // Auto-scroll to bottom when new messages arrive
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // Only auto-scroll if user is near bottom (within 100px) or if it's the first message
+    const chatContainer = chatEndRef.current?.parentElement
+    if (!chatContainer) return
+    
+    const isNearBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < 100
+    const isFirstMessage = messages.length === 1
+    
+    if (isNearBottom || isFirstMessage) {
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+    }
   }, [messages])
 
   const handleSend = () => {
