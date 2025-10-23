@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://postgres:wlfrfCfSOCDAKFwzOqRogeixzVOXiyET@turntable.proxy.rlwy.net:39953/railway"
     
     # AI Model
-    local_model_url: str = "http://98.85.228.199:8000"  # ✅ NEW EC2 IP!
+    local_model_url: str = "http://98.93.153.10:8000"  # ✅ EC2 vLLM Server
     local_model_name: str = "Qwen/Qwen2.5-14B-Instruct-AWQ"  # Current: 14B (upgrade to 32B later)
     use_local_model: bool = True
     openrouter_api_key: str = ""
