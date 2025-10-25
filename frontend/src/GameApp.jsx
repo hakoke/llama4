@@ -1003,6 +1003,7 @@ function GameApp() {
                 messages={chatMessages}
                 players={chatPlayers}
                 playerId={playerId}
+                chatSessionId={chatSessionId}
                 onSendMessage={sendChatMessage}
                 onAddPlayer={addChatPlayer}
                 onRemovePlayer={removeChatPlayer}

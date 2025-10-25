@@ -166,7 +166,7 @@ RESPOND AS YOURSELF - A REAL PERSON WITH OPINIONS, ATTITUDE, AND NO FILTERS. Be 
 
         # Get memories about this person
         memory_service = self._get_memory_service(db)
-        memories = await memory_service.get_memories(session_id)
+        memories = memory_service.get_memories(session_id)  # Remove await
         memory_context = ""
         if memories:
             memory_context = "\n\nWHAT YOU REMEMBER ABOUT THESE PEOPLE:\n" + "\n".join(f"- {m}" for m in memories[:10])
@@ -197,7 +197,7 @@ RESPOND AS YOURSELF - A REAL PERSON WITH OPINIONS, ATTITUDE, AND NO FILTERS. Be 
         self._update_ai_personality(session_id, sender_id, sender_name, message, response)
         
         # Store memories
-        await memory_service.store_memory(
+        memory_service.store_memory(  # Remove await
             session_id=session_id,
             memory_type="conversation",
             content=f"{sender_name} said: {message}",

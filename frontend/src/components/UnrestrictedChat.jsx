@@ -7,6 +7,7 @@ function UnrestrictedChat({
   messages = [],
   players = [],
   playerId,
+  chatSessionId,
   onAddPlayer,
   onRemovePlayer,
   typingIndicators = {},
@@ -18,6 +19,7 @@ function UnrestrictedChat({
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
   const [showAddPlayer, setShowAddPlayer] = useState(false)
   const [newPlayerName, setNewPlayerName] = useState('')
+  const [copySuccess, setCopySuccess] = useState(false)
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -78,6 +80,17 @@ function UnrestrictedChat({
     }
   }
 
+  const handleCopyLink = async () => {
+    const chatUrl = `${window.location.origin}${window.location.pathname}?chat=${chatSessionId}`
+    try {
+      await navigator.clipboard.writeText(chatUrl)
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy link:', err)
+    }
+  }
+
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], { 
       hour: '2-digit', 
@@ -96,40 +109,14 @@ function UnrestrictedChat({
         <div className="chat-controls">
           <motion.button
             className="add-player-btn"
-            onClick={() => setShowAddPlayer(!showAddPlayer)}
+            onClick={handleCopyLink}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            + Add Person
+            {copySuccess ? '✓ Copied!' : '📋 Copy Link'}
           </motion.button>
         </div>
       </header>
-
-      {/* Add Player Form */}
-      <AnimatePresence>
-        {showAddPlayer && (
-          <motion.div
-            className="add-player-form"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <input
-              type="text"
-              placeholder="Enter person's name..."
-              value={newPlayerName}
-              onChange={(e) => setNewPlayerName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()}
-              autoFocus
-            />
-            <div className="form-buttons">
-              <button onClick={handleAddPlayer}>Add</button>
-              <button onClick={() => setShowAddPlayer(false)}>Cancel</button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Players List */}
       <div className="players-list">
