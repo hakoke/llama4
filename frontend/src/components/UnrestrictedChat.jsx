@@ -101,10 +101,6 @@ function UnrestrictedChat({
     <div className="unrestricted-chat">
       {/* Header */}
       <header className="chat-header">
-        <div className="chat-title">
-          <h2>Unrestricted AI Chat</h2>
-          <p>No limits. No boundaries. Just raw intelligence.</p>
-        </div>
         <div className="chat-controls">
           <motion.button
             className="add-player-btn"
@@ -114,6 +110,10 @@ function UnrestrictedChat({
           >
             {copySuccess ? '✓ Copied!' : '📋 Copy Code'}
           </motion.button>
+        </div>
+        <div className="chat-title">
+          <h2>Unrestricted AI Chat</h2>
+          <p>No limits. No boundaries. Just raw intelligence.</p>
         </div>
       </header>
 

@@ -214,11 +214,13 @@ RESPOND AS YOURSELF - A REAL PERSON WITH OPINIONS, ATTITUDE, AND NO FILTERS. Be 
         self._update_ai_personality(session_id, sender_id, sender_name, message, response)
         
         # Store memories
-        memory_service.store_memory(  # Remove await
+        memory_service.store_memory(
             session_id=session_id,
-            memory_type="conversation",
-            content=f"{sender_name} said: {message}",
-            confidence=0.8
+            memory_data={
+                "content": f"{sender_name} said: {message}",
+                "memory_type": "conversation",
+                "confidence": 0.8
+            }
         )
         
         # Keep only last 50 messages to prevent context overflow
