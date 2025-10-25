@@ -81,9 +81,8 @@ function UnrestrictedChat({
   }
 
   const handleCopyLink = async () => {
-    const chatUrl = `${window.location.origin}${window.location.pathname}?chat=${chatSessionId}`
     try {
-      await navigator.clipboard.writeText(chatUrl)
+      await navigator.clipboard.writeText(chatSessionId)
       setCopySuccess(true)
       setTimeout(() => setCopySuccess(false), 2000)
     } catch (err) {
@@ -113,7 +112,7 @@ function UnrestrictedChat({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            {copySuccess ? '✓ Copied!' : '📋 Copy Link'}
+            {copySuccess ? '✓ Copied!' : '📋 Copy Code'}
           </motion.button>
         </div>
       </header>

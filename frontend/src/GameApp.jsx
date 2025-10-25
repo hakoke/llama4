@@ -537,7 +537,44 @@ function GameApp() {
       setMenuError('Set your username before joining a session.')
       return
     }
-    await joinGame(code, playerName)
+    
+    try {
+      // Try to join as a regular game first
+      await joinGame(code, playerName)
+    } catch (error) {
+      // If that fails, try to join as a chat session
+      try {
+        await joinChatSession(code, playerName)
+      } catch (chatError) {
+        console.error('Error joining game/chat:', chatError)
+        alert('Failed to join: ' + (error.response?.data?.detail || error.message))
+      }
+    }
+  }
+
+  const joinChatSession = async (sessionId, username) => {
+    try {
+      const response = await axios.post(`${API_URL}/chat/session/join`, {
+        username: username,
+        session_id: sessionId
+      })
+      
+      setChatSessionId(sessionId)
+      setPlayerId(response.data.player_id)
+      setUsername(username)
+      setChatPlayers([{
+        id: response.data.player_id,
+        username: response.data.username
+      }])
+      setPhase('unrestricted_chat')
+      
+      // Connect to chat WebSocket
+      connectToChat(sessionId, response.data.player_id)
+      
+    } catch (error) {
+      console.error('Error joining chat:', error)
+      throw error
+    }
   }
 
   const filteredLearningMessages = useMemo(() => (

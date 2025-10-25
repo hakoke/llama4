@@ -128,7 +128,10 @@ class AIService:
     
     async def _call_anthropic(self, messages: List[Dict]) -> str:
         """Fallback to Anthropic Claude"""
-        from anthropic import AsyncAnthropic
+        try:
+            from anthropic import AsyncAnthropic
+        except ImportError:
+            return "Sorry, anthropic module not available"
         
         client = AsyncAnthropic(api_key=settings.anthropic_api_key)
         

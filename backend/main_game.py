@@ -9,6 +9,7 @@ import json
 import random
 import time
 from datetime import datetime, timedelta
+import httpx
 
 from database import init_db, get_db, Player, PlayerVote, SessionLocal, UniversalKnowledge
 from game_service import GameService, GROUP_CHAT_DURATION, MIND_GAMES_TOTAL_DURATION, GROUP_REACT_DURATION
@@ -16,6 +17,7 @@ from websocket_handler import manager
 from ai_impersonator import ai_impersonator
 from ai_service import ai_service
 from memory_service import MemoryService
+from config import get_settings
 
 app = FastAPI(title="Unmasked: The AI Among Us API")
 
@@ -178,12 +180,27 @@ RESPOND AS YOURSELF - A REAL PERSON WITH OPINIONS, ATTITUDE, AND NO FILTERS. Be 
             {"role": "system", "content": full_prompt}
         ]
         
-        # Call AI
-        response = await ai_service.generate_response(
-            messages=messages,
-            memories=memories,
-            image_data=None
-        )
+        # Call AI directly using local vLLM
+        settings = get_settings()
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    f"{settings.local_model_url}/v1/chat/completions",
+                    json={
+                        "model": settings.local_model_name,
+                        "messages": messages,
+                        "max_tokens": 500,
+                        "temperature": 0.8
+                    }
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    response = data["choices"][0]["message"]["content"]
+                else:
+                    response = "yo what's up?"
+        except Exception as e:
+            print(f"Local model error: {e}")
+            response = "yo what's up?"
         
         # Add AI response to history
         self.conversation_history[session_id].append({
