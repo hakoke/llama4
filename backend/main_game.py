@@ -284,6 +284,9 @@ RESPOND AS YOURSELF - A REAL PERSON WITH OPINIONS, ATTITUDE, AND NO FILTERS. Be 
 # Initialize unrestricted AI service
 unrestricted_ai = UnrestrictedAIService()
 
+# Chat session storage (in-memory for now, can be moved to DB)
+chat_sessions = {}  # session_id -> {players: [], messages: []}
+
 # ROUTES
 
 @app.get("/")
@@ -1054,6 +1057,16 @@ async def chat_websocket_endpoint(
                 content = message_data.get("content")
                 username = message_data.get("username", "Unknown")
                 
+                # Store message in session
+                if session_id in chat_sessions:
+                    chat_sessions[session_id]["messages"].append({
+                        "content": content,
+                        "sender_id": player_id,
+                        "username": username,
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "is_ai": False
+                    })
+                
                 # Broadcast message to all players in session
                 await manager.broadcast_to_game({
                     "type": "chat_message",
@@ -1073,6 +1086,16 @@ async def chat_websocket_endpoint(
                         sender_name=username,
                         db=db
                     )
+                    
+                    # Store AI message in session
+                    if session_id in chat_sessions:
+                        chat_sessions[session_id]["messages"].append({
+                            "content": ai_response,
+                            "sender_id": "ai",
+                            "username": "🤖 AI",
+                            "timestamp": datetime.utcnow().isoformat(),
+                            "is_ai": True
+                        })
                     
                     # Send AI response to all players
                     await manager.broadcast_to_game({
@@ -1276,6 +1299,12 @@ async def create_chat_session(request: CreateChatSessionRequest, db: Session = D
     session_id = str(uuid.uuid4())
     player_id = str(uuid.uuid4())
     
+    # Initialize session storage
+    chat_sessions[session_id] = {
+        "players": [{"id": player_id, "username": request.username}],
+        "messages": []
+    }
+    
     return {
         "session_id": session_id,
         "player_id": player_id,
@@ -1285,12 +1314,26 @@ async def create_chat_session(request: CreateChatSessionRequest, db: Session = D
 @app.post("/chat/session/join")
 async def join_chat_session(request: JoinChatSessionRequest, db: Session = Depends(get_db)):
     """Join an existing chat session"""
+    session_id = request.session_id
     player_id = str(uuid.uuid4())
     
+    # Get or create session
+    if session_id not in chat_sessions:
+        chat_sessions[session_id] = {
+            "players": [],
+            "messages": []
+        }
+    
+    # Add new player to session
+    session = chat_sessions[session_id]
+    session["players"].append({"id": player_id, "username": request.username})
+    
     return {
-        "session_id": request.session_id,
+        "session_id": session_id,
         "player_id": player_id,
-        "username": request.username
+        "username": request.username,
+        "existing_players": [p for p in session["players"] if p["id"] != player_id],
+        "chat_history": session["messages"][-50:]  # Last 50 messages
     }
 
 @app.post("/chat/session/{session_id}/player/add")

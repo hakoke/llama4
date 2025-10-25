@@ -575,10 +575,28 @@ function GameApp() {
       setChatSessionId(sessionId)
       setPlayerId(response.data.player_id)
       setUsername(username)
-      setChatPlayers([{
-        id: response.data.player_id,
-        username: response.data.username
-      }])
+      
+      // Add all existing players including yourself
+      const allPlayers = [
+        ...(response.data.existing_players || []),
+        {
+          id: response.data.player_id,
+          username: response.data.username
+        }
+      ]
+      setChatPlayers(allPlayers)
+      
+      // Restore chat history
+      if (response.data.chat_history) {
+        setChatMessages(response.data.chat_history.map(msg => ({
+          content: msg.content,
+          sender_id: msg.sender_id,
+          username: msg.username,
+          timestamp: msg.timestamp,
+          is_ai: msg.is_ai || false
+        })))
+      }
+      
       setPhase('unrestricted_chat')
       
       // Connect to chat WebSocket
