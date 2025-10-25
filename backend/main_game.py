@@ -775,6 +775,8 @@ async def websocket_endpoint(
                 alias_payload = None
                 
                 # Get game info for alias
+                if 'db' not in locals():
+                    db = next(get_db())
                 game_service = GameService(db)
                 game = game_service.get_game(game_id)
                 if game:
@@ -907,11 +909,14 @@ async def ai_respond_in_group(game_id: str, replying_to_player: str, message: st
         game_id=game_id,
         memory_context=memory_context
     )
+    
+    print(f"AI group response: {ai_response}")
 
     # Respect AI's decision to stay silent
     should_respond = ai_response.get("should_respond", True)
     if not should_respond:
         # AI chose strategic silence - do nothing
+        print(f"AI chose to stay silent: {ai_response.get('reason', 'strategic silence')}")
         return
     
     latency_ms = ai_response.get("latency_ms")
