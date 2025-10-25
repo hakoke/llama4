@@ -11,6 +11,7 @@ import ResultsPhase from './components/ResultsPhase'
 import MindGamesStage from './components/MindGamesStage'
 import ReactStage from './components/ReactStage'
 import AccessibilityPanel from './components/AccessibilityPanel'
+import UnrestrictedChat from './components/UnrestrictedChat'
 import { audioController } from './utils/AudioController'
 import { hapticController } from './utils/HapticController'
 
@@ -64,6 +65,12 @@ function GameApp() {
   const [username, setUsername] = useState('')
   const [players, setPlayers] = useState([])
   const [gameMode, setGameMode] = useState('group')
+  
+  // Unrestricted chat state
+  const [chatSessionId, setChatSessionId] = useState(null)
+  const [chatPlayers, setChatPlayers] = useState([])
+  const [chatMessages, setChatMessages] = useState([])
+  const [chatWs, setChatWs] = useState(null)
   const [playerName, setPlayerName] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [menuError, setMenuError] = useState('')
@@ -555,6 +562,118 @@ function GameApp() {
     ? Math.max(0, Math.floor(activeTimer.deadline - currentTick / 1000))
     : null
 
+  // Unrestricted Chat Functions
+  const startUnrestrictedChat = async () => {
+    if (!username.trim()) {
+      setMenuError('Enter a username to start chatting')
+      return
+    }
+    
+    try {
+      const response = await axios.post(`${API_URL}/chat/session/create`, {
+        username: username.trim()
+      })
+      
+      setChatSessionId(response.data.session_id)
+      setPlayerId(response.data.player_id)
+      setChatPlayers([{
+        id: response.data.player_id,
+        username: response.data.username
+      }])
+      setPhase('unrestricted_chat')
+      
+      // Connect to chat WebSocket
+      connectToChat(response.data.session_id, response.data.player_id)
+      
+    } catch (error) {
+      console.error('Error starting chat:', error)
+      alert('Failed to start chat session')
+    }
+  }
+
+  const connectToChat = (sessionId, playerId) => {
+    const chatWsUrl = WS_URL.replace('8000', '8001') // Chat runs on port 8001
+    const websocket = new WebSocket(`${chatWsUrl}/ws/chat/${sessionId}/${playerId}`)
+    
+    websocket.onopen = () => {
+      console.log('Connected to unrestricted chat')
+      setChatWs(websocket)
+    }
+    
+    websocket.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      
+      if (data.type === 'chat_message') {
+        setChatMessages(prev => [...prev, {
+          content: data.content,
+          sender_id: data.sender_id,
+          username: data.username,
+          timestamp: data.timestamp,
+          is_ai: data.is_ai || false
+        }])
+      } else if (data.type === 'player_added') {
+        setChatPlayers(prev => [...prev, {
+          id: data.player.id,
+          username: data.player.username
+        }])
+      } else if (data.type === 'typing_indicator') {
+        // Handle typing indicators
+      }
+    }
+    
+    websocket.onclose = () => {
+      console.log('Disconnected from chat')
+      setChatWs(null)
+    }
+    
+    websocket.onerror = (error) => {
+      console.error('Chat WebSocket error:', error)
+    }
+  }
+
+  const sendChatMessage = (content) => {
+    if (chatWs && chatWs.readyState === WebSocket.OPEN) {
+      chatWs.send(JSON.stringify({
+        type: 'chat_message',
+        content: content,
+        username: username
+      }))
+    }
+  }
+
+  const addChatPlayer = async (playerName) => {
+    if (!chatSessionId) return
+    
+    try {
+      const response = await axios.post(`${API_URL}/chat/session/${chatSessionId}/player/add`, {
+        username: playerName
+      })
+      
+      setChatPlayers(prev => [...prev, {
+        id: response.data.player_id,
+        username: response.data.username
+      }])
+      
+    } catch (error) {
+      console.error('Error adding player:', error)
+      alert('Failed to add player')
+    }
+  }
+
+  const removeChatPlayer = (playerIdToRemove) => {
+    setChatPlayers(prev => prev.filter(p => p.id !== playerIdToRemove))
+  }
+
+  const leaveChat = () => {
+    if (chatWs) {
+      chatWs.close()
+    }
+    setChatSessionId(null)
+    setChatPlayers([])
+    setChatMessages([])
+    setPhase('menu')
+  }
+
   return (
     <div className="game-app">
       <div className="ambient-orb" />
@@ -660,6 +779,15 @@ function GameApp() {
                   >
                     <span className="mode-label">Private Rotation</span>
                     <span className="mode-desc">Two minute duels. Rotating impostors. Trust nothing.</span>
+                  </motion.button>
+                  <motion.button
+                    className="mode-card unrestricted"
+                    whileHover={{ translateY: -8, scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => startUnrestrictedChat()}
+                  >
+                    <span className="mode-label">🤖 Unrestricted Chat</span>
+                    <span className="mode-desc">No limits. No boundaries. Just raw AI intelligence.</span>
                   </motion.button>
                 </div>
                 <div className="menu-join">
@@ -859,6 +987,33 @@ function GameApp() {
                 latencyStats={latencyStats}
                 aliases={aliases}
               />
+            </motion.section>
+          )}
+
+          {phase === 'unrestricted_chat' && (
+            <motion.section
+              key="unrestricted_chat"
+              className="unrestricted-chat-container"
+              initial={{ opacity: 0, y: 40, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -30, scale: 0.97 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+            >
+              <UnrestrictedChat
+                messages={chatMessages}
+                players={chatPlayers}
+                playerId={playerId}
+                onSendMessage={sendChatMessage}
+                onAddPlayer={addChatPlayer}
+                onRemovePlayer={removeChatPlayer}
+                typingIndicators={typingIndicators}
+                reducedMotion={reducedMotion}
+              />
+              <div className="chat-controls">
+                <button onClick={leaveChat} className="leave-chat-btn">
+                  Leave Chat
+                </button>
+              </div>
             </motion.section>
           )}
         </AnimatePresence>
