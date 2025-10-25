@@ -4,7 +4,14 @@ from typing import List, Dict, Optional
 from config import get_settings
 import base64
 from io import BytesIO
-from PIL import Image
+
+# Optional PIL import for image processing
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+    Image = None
 
 settings = get_settings()
 
