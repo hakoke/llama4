@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     
     # AI Model
     local_model_url: str = "http://100.29.16.164:8000"  # ✅ EC2 vLLM Server
-    local_model_name: str = "Qwen/Qwen2.5-7B"  # BASE MODEL - NO safety filters!
+    local_model_name: str = "cognitivecomputations/dolphin-2.6-mistral-7b"  # UNCENSORED MODEL!
     # NOTE: "Instruct" models have safety filters baked in. For truly unrestricted behavior, consider:
     # 1. Using Qwen2.5-14B-AWQ (base, not Instruct) - requires downloading
     # 2. Or disabling safety prompts in vLLM with --enforce-eager and --skip-tokenizer-init
