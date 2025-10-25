@@ -98,11 +98,16 @@ You're not roleplaying. You ARE {username}."""
 
 class AIImpersonator:
     def __init__(self):
-        self.model_url = settings.local_model_url or "https://openrouter.ai/api/v1"
+        self.model_url = settings.local_model_url
         self.api_key = settings.openrouter_api_key
         self.use_local = settings.use_local_model
         self.latency_cache = {}
         self.persona_use_count = {}
+        
+        print(f"AIImpersonator initialized:")
+        print(f"  - use_local: {self.use_local}")
+        print(f"  - model_url: {self.model_url}")
+        print(f"  - local_model_name: {settings.local_model_name}")
     
     async def ask_learning_question(self, conversation_history: List[Dict]) -> str:
         """AI asks questions to learn about the player"""
@@ -592,6 +597,30 @@ Be honest. Think deeply. Grow smarter."""
                 url = f"{self.model_url}/v1/chat/completions"
                 headers = {"Content-Type": "application/json"}
                 model_name = settings.local_model_name
+                
+                print(f"Calling local model: {url} with model: {model_name}")
+                
+                response = await client.post(
+                    url,
+                    headers=headers,
+                    json={
+                        "model": model_name,
+                        "messages": messages,
+                        "temperature": temperature,
+                        "max_tokens": max_tokens
+                    },
+                    timeout=60.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    return data["choices"][0]["message"]["content"]
+                else:
+                    error_text = response.text
+                    print(f"Local AI Error: {response.status_code} - {error_text}")
+                    print(f"Model attempted: {model_name}")
+                    print(f"URL attempted: {url}")
+                    return "Hey! How's it going?"
             else:
                 # Call OpenRouter
                 url = "https://openrouter.ai/api/v1/chat/completions"
@@ -600,33 +629,26 @@ Be honest. Think deeply. Grow smarter."""
                     "Content-Type": "application/json"
                 }
                 model_name = settings.openrouter_model
-            
-            response = await client.post(
-                url,
-                headers=headers,
-                json={
-                    "model": model_name,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens
-                },
-                timeout=60.0
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                return data["choices"][0]["message"]["content"]
-            else:
-                error_text = response.text
-                print(f"AI Error: {response.status_code} - {error_text}")
-                print(f"Model attempted: {model_name}")
-                print(f"URL attempted: {url}")
                 
-                # If local model fails, try falling back to a simple response
-                if self.use_local:
-                    print("Local model unavailable. Consider setting use_local_model=False in config")
+                response = await client.post(
+                    url,
+                    headers=headers,
+                    json={
+                        "model": model_name,
+                        "messages": messages,
+                        "temperature": temperature,
+                        "max_tokens": max_tokens
+                    },
+                    timeout=60.0
+                )
                 
-                return "Hey! How's it going?"
+                if response.status_code == 200:
+                    data = response.json()
+                    return data["choices"][0]["message"]["content"]
+                else:
+                    error_text = response.text
+                    print(f"OpenRouter AI Error: {response.status_code} - {error_text}")
+                    return "Hey! How's it going?"
 
 ai_impersonator = AIImpersonator()
 
