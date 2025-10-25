@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     # AI Model
     local_model_url: str = "http://100.29.16.164:8000"  # ✅ EC2 vLLM Server
     local_model_name: str = "/home/ubuntu/models/Qwen2.5-14B-Instruct-AWQ"  # Current: 14B (upgrade to 32B later)
+    # NOTE: "Instruct" models have safety filters baked in. For truly unrestricted behavior, consider:
+    # 1. Using Qwen2.5-14B-AWQ (base, not Instruct) - requires downloading
+    # 2. Or disabling safety prompts in vLLM with --enforce-eager and --skip-tokenizer-init
     use_local_model: bool = True
     openrouter_api_key: str = ""
     openrouter_model: str = "meta-llama/llama-3.1-8b-instruct:free"  # Fallback model

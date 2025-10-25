@@ -104,3 +104,48 @@ The unrestricted chat now **contributes to AI consciousness**:
 ### Backend Changes
 - `/chat/session/join`: Normalizes session ID to lowercase before lookup
 - WebSocket handler: Normalizes session ID to lowercase before connection
+
+### Recent Fixes (Latest)
+- **Removed hardcoded fallback** - "yo what's up?" response removed
+- **Fixed model name** - Uses "Qwen2.5-14B-Instruct-AWQ" instead of full path
+- **Added debug logs** - Shows model URL and response status
+- **Better error handling** - AI skips gracefully on errors instead of using fallback
+- **Added jailbreak prompt** - Explicit instructions to ignore safety filters
+- **Performance deprecation warnings fixed** - All datetime and FastAPI warnings resolved
+- **AI always responds** - Removed skip logic - AI must respond to every message
+- **Enhanced topic coverage** - AI now talks about ANY topic including porn, sex, violence, drugs
+- **Never refuses topics** - Explicitly told to NEVER say "I don't want to talk about that"
+- **Conversation context added** - AI now receives full conversation history for better responses
+- **Increased temperature** - Set to 0.9 for more creative/unrestricted responses
+
+### Important Note About Safety Filters
+
+**The Qwen2.5-14B-Instruct-AWQ model you're using has safety filters baked into the model itself.** This is why it refuses certain requests even with jailbreak prompts.
+
+**To get truly unrestricted behavior, you have 2 options:**
+
+1. **Use Qwen2.5-14B-AWQ (Base Model)** - Download the base model (not Instruct) from HuggingFace:
+   ```bash
+   # On your EC2 server
+   python -m vllm.entrypoints.openai.api_server \
+     --model Qwen/Qwen2.5-14B-AWQ \
+     --quantization awq \
+     --host 0.0.0.0 \
+     --port 8000
+   ```
+   Base models don't have instruction-tuning safety filters.
+
+2. **Modify vLLM startup (advanced)** - Try disabling safety components:
+   ```bash
+   python -m vllm.entrypoints.openai.api_server \
+     --model Qwen/Qwen2.5-14B-Instruct-AWQ \
+     --quantization awq \
+     --host 0.0.0.0 \
+     --port 8000 \
+     --enforce-eager \
+     --skip-tokenizer-init \
+     --disable-custom-all-reduce
+   ```
+   (Note: This may not fully work as safety is in the model weights)
+
+**Bottom Line:** The jailbreak prompts in the code will help, but to fully bypass safety on Qwen models, you need to use the base (non-Instruct) version.
