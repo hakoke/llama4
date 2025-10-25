@@ -593,8 +593,7 @@ function GameApp() {
   }
 
   const connectToChat = (sessionId, playerId) => {
-    const chatWsUrl = WS_URL.replace('8000', '8001') // Chat runs on port 8001
-    const websocket = new WebSocket(`${chatWsUrl}/ws/chat/${sessionId}/${playerId}`)
+    const websocket = new WebSocket(`${WS_URL}/ws/chat/${sessionId}/${playerId}`)
     
     websocket.onopen = () => {
       console.log('Connected to unrestricted chat')
