@@ -18,8 +18,17 @@ from ai_impersonator import ai_impersonator
 from ai_service import ai_service
 from memory_service import MemoryService
 from config import get_settings
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="Unmasked: The AI Among Us API")
+# Initialize database with lifespan
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    init_db()
+    yield
+    # Shutdown (if needed)
+
+app = FastAPI(title="Unmasked: The AI Among Us API", lifespan=lifespan)
 
 # CORS
 app.add_middleware(
@@ -29,11 +38,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Initialize database
-@app.on_event("startup")
-async def startup_event():
-    init_db()
 
 # MODELS
 
@@ -175,7 +179,7 @@ class UnrestrictedAIService:
             "role": "user",
             "content": f"{sender_name}: {message}",
             "sender_id": sender_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Get AI's persistent consciousness from database
@@ -285,7 +289,7 @@ RESPOND AS YOURSELF - A REAL PERSON WITH OPINIONS, ATTITUDE, AND NO FILTERS. Be 
             "role": "assistant", 
             "content": response,
             "sender_id": "ai",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Update AI consciousness based on interaction - SAVE TO DATABASE
@@ -458,7 +462,7 @@ Be specific and actionable."""
                             success_rate=0.7,
                             times_used=0,
                             times_successful=0,
-                            last_updated=datetime.utcnow(),
+                            last_updated=datetime.now(timezone.utc),
                             meta_info={"source": "unrestricted_chat", "session_id": session_id}
                         )
                         db.add(knowledge)
@@ -624,9 +628,9 @@ phase_scheduler = PhaseScheduler()
 
 async def schedule_learning_end(game_id: str, duration: int = 180, deadline: Optional[float] = None):
     if deadline is None:
-        deadline = datetime.utcnow().timestamp() + duration
+        deadline = datetime.now(timezone.utc).timestamp() + duration
     phase_scheduler.learning_deadlines[game_id] = deadline
-    sleep_time = max(0, deadline - datetime.utcnow().timestamp())
+    sleep_time = max(0, deadline - datetime.now(timezone.utc).timestamp())
     await asyncio.sleep(sleep_time)
     try:
         await start_research_phase(game_id)
@@ -635,9 +639,9 @@ async def schedule_learning_end(game_id: str, duration: int = 180, deadline: Opt
 
 async def schedule_play_end(game_id: str, duration: int = 300, deadline: Optional[float] = None):
     if deadline is None:
-        deadline = datetime.utcnow().timestamp() + duration
+        deadline = datetime.now(timezone.utc).timestamp() + duration
     phase_scheduler.play_deadlines[game_id] = deadline
-    sleep_time = max(0, deadline - datetime.utcnow().timestamp())
+    sleep_time = max(0, deadline - datetime.now(timezone.utc).timestamp())
     await asyncio.sleep(sleep_time)
     try:
         await start_voting_phase(game_id)
@@ -1139,7 +1143,7 @@ async def websocket_endpoint(
             elif msg_type == "mind_game_response":
                 mind_game_id = message_data.get("mind_game_id")
                 answer = message_data.get("answer", "")
-                timestamp = message_data.get("timestamp") or datetime.utcnow().isoformat()
+                timestamp = message_data.get("timestamp") or datetime.now(timezone.utc).isoformat()
 
                 db = next(get_db())
                 game_service = GameService(db)
@@ -1252,7 +1256,7 @@ async def chat_websocket_endpoint(
                         "content": content,
                         "sender_id": player_id,
                         "username": username,
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                         "is_ai": False
                     })
                 
@@ -1262,7 +1266,7 @@ async def chat_websocket_endpoint(
                     "content": content,
                     "sender_id": player_id,
                     "username": username,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }, session_id)
                 
                 # Generate AI response
@@ -1284,7 +1288,7 @@ async def chat_websocket_endpoint(
                                 "content": ai_response,
                                 "sender_id": "ai",
                                 "username": "🤖 AI",
-                                "timestamp": datetime.utcnow().isoformat(),
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
                                 "is_ai": True
                             })
                         
@@ -1294,7 +1298,7 @@ async def chat_websocket_endpoint(
                             "content": ai_response,
                             "sender_id": "ai",
                             "username": "🤖 AI",
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                             "is_ai": True
                         }, session_id)
                     else:
