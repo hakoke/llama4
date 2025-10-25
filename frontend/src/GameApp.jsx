@@ -538,16 +538,29 @@ function GameApp() {
       return
     }
     
+    // Check if it's a chat session ID (UUID format)
+    const isChatSession = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code)
+    
     try {
-      // Try to join as a regular game first
-      await joinGame(code, playerName)
-    } catch (error) {
-      // If that fails, try to join as a chat session
-      try {
+      if (isChatSession) {
+        // It's a chat session ID, join directly
         await joinChatSession(code, playerName)
-      } catch (chatError) {
-        console.error('Error joining game/chat:', chatError)
-        alert('Failed to join: ' + (error.response?.data?.detail || error.message))
+      } else {
+        // It's a regular game code, try regular game first
+        await joinGame(code, playerName)
+      }
+    } catch (error) {
+      // If regular game fails and it's not a chat session, try chat anyway
+      if (!isChatSession) {
+        try {
+          await joinChatSession(code, playerName)
+        } catch (chatError) {
+          console.error('Error joining game/chat:', chatError)
+          alert('Failed to join: ' + (error.response?.data?.detail || error.message))
+        }
+      } else {
+        console.error('Error joining chat:', error)
+        alert('Failed to join chat: ' + (error.response?.data?.detail || error.message))
       }
     }
   }
