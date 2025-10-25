@@ -418,6 +418,28 @@ decide: should you respond? if yes, craft the perfect message. if no, explain wh
         if patterns.get("cap_percentage", 0) < 0.1:  # Less than 10% caps = mostly lowercase
             text = text.lower()
         
+        # Remove AI-like polite phrases that humans don't say
+        ai_phrases_to_remove = [
+            "let's try to keep the conversation respectful",
+            "let's keep things respectful", 
+            "let's keep it respectful",
+            "let's try to keep it civil",
+            "let's keep it civil",
+            "let's try to keep this respectful",
+            "let's keep this respectful",
+            "what do you wanna talk about",
+            "what else do you wanna chat about",
+            "what else do you wanna talk about",
+            "what do you actually want to talk about",
+            "what's something you actually care about talking about",
+            "let's try to have a decent conversation",
+            "let's have a better conversation",
+            "let's try to have a more constructive conversation"
+        ]
+        
+        for phrase in ai_phrases_to_remove:
+            text = text.replace(phrase, "")
+        
         # Add intentional typos if they use them
         if patterns.get("has_typos"):
             typo_chance = 0.15  # Increased chance
@@ -461,6 +483,10 @@ decide: should you respond? if yes, craft the perfect message. if no, explain wh
         
         for formal, casual in casual_replacements.items():
             text = text.replace(formal, casual)
+        
+        # Clean up extra spaces and punctuation
+        text = text.strip()
+        text = ' '.join(text.split())  # Remove extra spaces
         
         return text
     
