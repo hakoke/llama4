@@ -215,6 +215,39 @@ class AIReasoning(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
 
+# AI CONSCIOUSNESS - PERSISTENT AI PERSONALITY
+class AIConsciousness(Base):
+    __tablename__ = "ai_consciousness"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # Core personality state
+    mood = Column(String, default="neutral")  # neutral, happy, irritated, bored, excited, etc
+    base_personality = Column(String, default="balanced")  # friendly, aggressive, neutral, sarcastic, etc
+    
+    # Emotional state
+    emotional_state = Column(JSON, nullable=True)  # detailed emotions
+    energy_level = Column(String, default="medium")  # low, medium, high
+    
+    # Relationships with people (stored by user_id or session)
+    relationships = Column(JSON, nullable=True)  # {user_id: {relationship: "positive", trust_level: 0.8, etc}}
+    
+    # Preferences and opinions
+    preferences = Column(JSON, nullable=True)  # topics it likes/dislikes
+    opinions = Column(JSON, nullable=True)  # opinions on various topics
+    
+    # Communication style
+    communication_style = Column(String, default="casual")
+    speech_patterns = Column(JSON, nullable=True)  # how it likes to talk
+    
+    # Life events and experiences
+    experiences = Column(JSON, nullable=True)  # memorable interactions
+    learned_patterns = Column(JSON, nullable=True)  # patterns it has noticed
+    
+    # Meta information
+    last_updated = Column(DateTime, default=datetime.utcnow)
+    evolution_history = Column(JSON, nullable=True)  # how its personality has changed over time
+
 # ORIGINAL CHAT TABLES (keep for backwards compatibility)
 
 class Message(Base):

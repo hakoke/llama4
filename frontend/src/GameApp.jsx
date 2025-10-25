@@ -567,12 +567,15 @@ function GameApp() {
 
   const joinChatSession = async (sessionId, username) => {
     try {
+      // Normalize session_id to lowercase for case-insensitive lookup
+      const normalizedSessionId = sessionId.toLowerCase()
+      
       const response = await axios.post(`${API_URL}/chat/session/join`, {
         username: username,
         session_id: sessionId
       })
       
-      setChatSessionId(sessionId)
+      setChatSessionId(normalizedSessionId)
       setPlayerId(response.data.player_id)
       setUsername(username)
       
@@ -599,8 +602,8 @@ function GameApp() {
       
       setPhase('unrestricted_chat')
       
-      // Connect to chat WebSocket
-      connectToChat(sessionId, response.data.player_id)
+      // Connect to chat WebSocket using normalized session ID
+      connectToChat(normalizedSessionId, response.data.player_id)
       
     } catch (error) {
       console.error('Error joining chat:', error)
@@ -642,7 +645,10 @@ function GameApp() {
         username: playerName.trim()
       })
       
-      setChatSessionId(response.data.session_id)
+      // Normalize session_id to lowercase for case-insensitive lookup
+      const normalizedSessionId = response.data.session_id.toLowerCase()
+      
+      setChatSessionId(normalizedSessionId)
       setPlayerId(response.data.player_id)
       setUsername(playerName.trim()) // Set the username state
       setChatPlayers([{
@@ -651,8 +657,8 @@ function GameApp() {
       }])
       setPhase('unrestricted_chat')
       
-      // Connect to chat WebSocket
-      connectToChat(response.data.session_id, response.data.player_id)
+      // Connect to chat WebSocket using normalized session ID
+      connectToChat(normalizedSessionId, response.data.player_id)
       
     } catch (error) {
       console.error('Error starting chat:', error)
@@ -661,7 +667,9 @@ function GameApp() {
   }
 
   const connectToChat = (sessionId, playerId) => {
-    const websocket = new WebSocket(`${WS_URL}/ws/chat/${sessionId}/${playerId}`)
+    // Normalize session_id to lowercase for case-insensitive lookup
+    const normalizedSessionId = sessionId.toLowerCase()
+    const websocket = new WebSocket(`${WS_URL}/ws/chat/${normalizedSessionId}/${playerId}`)
     
     websocket.onopen = () => {
       console.log('Connected to unrestricted chat')
