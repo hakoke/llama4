@@ -564,18 +564,19 @@ function GameApp() {
 
   // Unrestricted Chat Functions
   const startUnrestrictedChat = async () => {
-    if (!username.trim()) {
+    if (!playerName.trim()) {
       setMenuError('Enter a username to start chatting')
       return
     }
     
     try {
       const response = await axios.post(`${API_URL}/chat/session/create`, {
-        username: username.trim()
+        username: playerName.trim()
       })
       
       setChatSessionId(response.data.session_id)
       setPlayerId(response.data.player_id)
+      setUsername(playerName.trim()) // Set the username state
       setChatPlayers([{
         id: response.data.player_id,
         username: response.data.username
@@ -636,7 +637,7 @@ function GameApp() {
       chatWs.send(JSON.stringify({
         type: 'chat_message',
         content: content,
-        username: username
+        username: username || playerName // Use username if set, otherwise playerName
       }))
     }
   }
