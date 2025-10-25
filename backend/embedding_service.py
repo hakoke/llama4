@@ -38,13 +38,16 @@ class EmbeddingService:
             except Exception as e:
                 print(f"Local embedding failed: {e}, falling back...")
         
-        # Fallback to OpenRouter embedding endpoint
-        try:
-            embedding = await self._generate_openrouter_embedding(text)
-            self.cache[cache_key] = embedding
-            return embedding
-        except Exception as e:
-            print(f"OpenRouter embedding failed: {e}, using deterministic fallback")
+        # Fallback to OpenRouter embedding endpoint (only if API key is configured)
+        if self.api_key and self.api_key.strip():
+            try:
+                embedding = await self._generate_openrouter_embedding(text)
+                self.cache[cache_key] = embedding
+                return embedding
+            except Exception as e:
+                print(f"OpenRouter embedding failed: {e}, using deterministic fallback")
+        else:
+            print("OpenRouter API key not configured, using deterministic fallback")
         
         # Ultimate fallback: deterministic pseudo-embedding
         embedding = self._deterministic_embedding(text)
@@ -59,7 +62,7 @@ class EmbeddingService:
                     f"{self.model_url}/v1/embeddings",
                     headers={"Content-Type": "application/json"},
                     json={
-                        "model": self.settings.local_model_name,
+                        "model": settings.local_model_name,
                         "input": text
                     }
                 )
@@ -74,6 +77,10 @@ class EmbeddingService:
     
     async def _generate_openrouter_embedding(self, text: str) -> List[float]:
         """Generate embedding using OpenRouter's embedding models"""
+        # Don't try OpenRouter if API key is empty
+        if not self.api_key or self.api_key.strip() == "":
+            raise Exception("OpenRouter API key not configured")
+            
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(
                 "https://openrouter.ai/api/v1/embeddings",
