@@ -773,6 +773,10 @@ async def websocket_endpoint(
                 # Typing indicator
                 is_typing = message_data.get("is_typing", False)
                 alias_payload = None
+                
+                # Get game info for alias
+                game_service = GameService(db)
+                game = game_service.get_game(game_id)
                 if game:
                     if game.mode == "group":
                         alias_payload = (game.settings or {}).get("ai_group_personas", {}).get(player_id)

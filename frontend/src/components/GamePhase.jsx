@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import './GamePhase.css'
 
@@ -25,6 +25,8 @@ function GamePhase({
   const [input, setInput] = useState('')
   const [timeLeft, setTimeLeft] = useState(duration)
   const [isTyping, setIsTyping] = useState(false)
+  const chatContainerRef = useRef(null)
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
 
   useEffect(() => {
     if (!deadline) return
@@ -110,6 +112,30 @@ function GamePhase({
     return [...messages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
   }, [messages])
 
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (shouldAutoScroll && chatContainerRef.current) {
+      const container = chatContainerRef.current
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100
+      
+      if (isNearBottom) {
+        // Smooth scroll to bottom
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        })
+      }
+    }
+  }, [orderedMessages, shouldAutoScroll])
+
+  // Handle scroll events to detect if user scrolled up
+  const handleScroll = () => {
+    if (chatContainerRef.current) {
+      const container = chatContainerRef.current
+      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50
+      setShouldAutoScroll(isAtBottom)
+    }
+  }
 
   const resolvedAlias = (msg) => {
     if (msg.alias) return msg.alias
@@ -155,7 +181,11 @@ function GamePhase({
         </ul>
       </aside>
 
-      <div className="arena-chat">
+      <div 
+        className="arena-chat" 
+        ref={chatContainerRef}
+        onScroll={handleScroll}
+      >
         <AnimatePresence initial={false}>
           {orderedMessages.map((msg, idx) => {
             const isOwn = msg.sender_id === playerId
