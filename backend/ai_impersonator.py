@@ -258,7 +258,7 @@ Return ONLY valid JSON, nothing else."""
             *message_history
         ]
         
-        response = await self._call_model(messages, temperature=0.9, max_tokens=200)
+        response = await self._call_model(messages, temperature=0.9, max_tokens=400)
         response = self._apply_typing_style(response, profile.get("typing_patterns", {}))
         return response
 
@@ -341,6 +341,11 @@ response guidelines (if you choose to respond):
 - if someone's being annoying, tell them
 - fight back when people are being dicks
 - be human - have real reactions to things
+- you can write SHORT responses when appropriate
+- you can write LONG responses when you want to elaborate
+- vary your response length naturally - sometimes short, sometimes long
+- if you have a lot to say about something, say it
+- don't limit yourself to short responses - be natural
 
 chat history:
 {json.dumps(history[-14:], indent=2)}
@@ -350,7 +355,7 @@ decide: should you respond? if yes, craft the perfect message. if no, explain wh
         response = await self._call_model([
             {"role": "system", "content": "You are an adaptive conversational AI with FULL AUTONOMY. You decide when to speak and when to observe. Be strategic."},
             {"role": "user", "content": prompt}
-        ], temperature=0.87, max_tokens=340)
+        ], temperature=0.87, max_tokens=500)
 
         try:
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
