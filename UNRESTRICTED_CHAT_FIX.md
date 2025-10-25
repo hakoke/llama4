@@ -27,6 +27,13 @@ Implemented session persistence in the backend so that when a user joins with a 
 3. User B (on another laptop) pastes the session ID in the "Join Game" field
 4. User B joins the SAME session with all previous messages and players visible
 
+## Real-Time Features
+- ✅ **Real-time chat** - All messages appear instantly for everyone
+- ✅ **Multiple users** - Everyone can see all messages in real time
+- ✅ **AI participation** - The AI can join the conversation naturally
+- ✅ **Selective AI responses** - The AI doesn't have to respond to every message - it can decide when to talk or stay silent
+- ✅ **Natural conversation flow** - Like a real group chat
+
 ## Unrestricted AI Capabilities
 
 The AI in unrestricted chat mode has **NO CONTENT RESTRICTIONS** and can:

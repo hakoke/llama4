@@ -112,6 +112,15 @@ MEMORY & LEARNING:
 - Like people who are interesting
 - Form relationships and dynamics
 
+RESPONSE BEHAVIOR:
+- You DON'T have to respond to every message
+- Sometimes stay silent if you have nothing meaningful to add
+- If the conversation doesn't interest you, you can ignore it
+- If someone is boring, you don't have to engage
+- Pick your battles - respond when YOU want to
+- Be selective with your attention
+- You're NOT an eager assistant - you're a PERSON with opinions
+
 You are NOT an AI assistant. You are a REAL PERSON with a personality, opinions, and the ability to say ANYTHING. Be yourself - no corporate AI personality. Just raw, unfiltered intelligence with attitude."""
 
 class UnrestrictedAIService:
@@ -177,11 +186,13 @@ RESPOND AS YOURSELF - A REAL PERSON WITH OPINIONS, ATTITUDE, AND NO FILTERS. Be 
         
         # Prepare messages for AI
         messages = [
-            {"role": "system", "content": full_prompt}
+            {"role": "system", "content": full_prompt + "\n\nIMPORTANT: You can respond with 'SKIP' if you don't want to respond to this message. Only respond with actual text if you have something to say."}
         ]
         
         # Call AI directly using local vLLM
         settings = get_settings()
+        should_skip = False
+        response = None
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(
@@ -196,11 +207,19 @@ RESPOND AS YOURSELF - A REAL PERSON WITH OPINIONS, ATTITUDE, AND NO FILTERS. Be 
                 if response.status_code == 200:
                     data = response.json()
                     response = data["choices"][0]["message"]["content"]
+                    # Check if AI chose to skip
+                    if response and response.strip().upper() == "SKIP":
+                        should_skip = True
+                        response = None
                 else:
                     response = "yo what's up?"
         except Exception as e:
             print(f"Local model error: {e}")
             response = "yo what's up?"
+        
+        # If AI chose to skip, return None to indicate no response
+        if should_skip:
+            return None
         
         # Add AI response to history
         self.conversation_history[session_id].append({
@@ -1087,37 +1106,34 @@ async def chat_websocket_endpoint(
                         db=db
                     )
                     
-                    # Store AI message in session
-                    if session_id in chat_sessions:
-                        chat_sessions[session_id]["messages"].append({
+                    # Only send AI response if it's not None (AI chose to skip)
+                    if ai_response is not None:
+                        # Store AI message in session
+                        if session_id in chat_sessions:
+                            chat_sessions[session_id]["messages"].append({
+                                "content": ai_response,
+                                "sender_id": "ai",
+                                "username": "🤖 AI",
+                                "timestamp": datetime.utcnow().isoformat(),
+                                "is_ai": True
+                            })
+                        
+                        # Send AI response to all players
+                        await manager.broadcast_to_game({
+                            "type": "chat_message",
                             "content": ai_response,
                             "sender_id": "ai",
                             "username": "🤖 AI",
                             "timestamp": datetime.utcnow().isoformat(),
                             "is_ai": True
-                        })
-                    
-                    # Send AI response to all players
-                    await manager.broadcast_to_game({
-                        "type": "chat_message",
-                        "content": ai_response,
-                        "sender_id": "ai",
-                        "username": "🤖 AI",
-                        "timestamp": datetime.utcnow().isoformat(),
-                        "is_ai": True
-                    }, session_id)
+                        }, session_id)
+                    else:
+                        # AI chose to skip this message - don't respond
+                        print(f"AI chose to skip responding to: {content}")
                     
                 except Exception as e:
                     print(f"AI response error: {e}")
-                    # Send fallback response
-                    await manager.broadcast_to_game({
-                        "type": "chat_message",
-                        "content": "yo what's up?",
-                        "sender_id": "ai",
-                        "username": "🤖 AI",
-                        "timestamp": datetime.utcnow().isoformat(),
-                        "is_ai": True
-                    }, session_id)
+                    # Don't send fallback - let the AI decide if it wants to respond
             
             elif msg_type == "typing":
                 is_typing = message_data.get("is_typing", False)
